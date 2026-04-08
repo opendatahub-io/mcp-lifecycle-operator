@@ -1,13 +1,15 @@
-approvers:
-- aliok
-- cali0707
-- jaideepr97
-- kaustubh-pande
-- matzew
 reviewers:
-- aliok
-- cali0707
-- jaideepr97
-- kaustubh-pande
-- matzew
+  - aliok
+  - Cali0707
+  - creydr
+  - jaideepr97
+  - matzew
+  - Kaustubh-pande
+approvers:
+  - aliok
+  - Cali0707
+  - creydr
+  - jaideepr97
+  - matzew
+  - Kaustubh-pande
 component: "mcp-lifecycle-operator"
