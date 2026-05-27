@@ -6,35 +6,32 @@ This guide will walk you through deploying your first MCP server using the MCP L
 
 - Kubernetes cluster (v1.28+)
 - kubectl configured to access your cluster
-- Go 1.25+ (for building from source)
+- Go 1.25+ (only needed for building from source)
 
 ## Installation
 
-### 1. Install the CRDs
+### Option A: Install from Release (Recommended)
 
-First, install the Custom Resource Definitions:
+Install the operator and CRDs directly from the [latest release](https://github.com/kubernetes-sigs/mcp-lifecycle-operator/releases/latest):
 
 ```bash
-make install
+kubectl apply -f https://github.com/kubernetes-sigs/mcp-lifecycle-operator/releases/latest/download/install.yaml
 ```
 
-This creates the `MCPServer` CRD in your cluster.
+This installs the CRDs, the controller Deployment, and all necessary RBAC resources in the `mcp-lifecycle-operator-system` namespace.
 
-### 2. Run the Controller
+### Option B: Run Locally (for Development)
 
-You have two options:
-
-#### Option A: Run Locally (Recommended for Testing)
-
-Run the controller on your local machine (it will connect to your cluster):
+Clone the repository and run the controller on your local machine:
 
 ```bash
-make run
+make install  # Install the CRDs
+make run      # Run the controller locally
 ```
 
 Keep this terminal open. The controller logs will appear here.
 
-#### Option B: Deploy to Cluster
+### Option C: Build and Deploy from Source
 
 Build and deploy the controller as a Deployment in your cluster:
 
@@ -97,26 +94,27 @@ kubectl get pods -l mcp-server=kubernetes-mcp-server
 Expected output from `kubectl get mcpservers`:
 
 ```
-NAME                    PHASE     IMAGE                                         PORT   ADDRESS                                                     AGE
-kubernetes-mcp-server   Running   quay.io/containers/kubernetes_mcp_server:latest   8080   http://kubernetes-mcp-server.default.svc.cluster.local:8080/mcp  1m
+NAME                    READY   ACCEPTED   IMAGE                                                  PORT   ADDRESS                                                          AGE
+kubernetes-mcp-server   True    True       quay.io/containers/kubernetes_mcp_server:latest         8080   http://kubernetes-mcp-server.default.svc.cluster.local:8080/mcp   1m
 ```
 
 The `ADDRESS` column shows the cluster-internal URL that can be used by other workloads to connect to the MCP server.
 
-### View Status Details
-
-The status includes the service address for easy discovery:
+The status includes conditions and the service address for easy discovery:
 
 ```yaml
 status:
-  phase: Running
   deploymentName: kubernetes-mcp-server
   serviceName: kubernetes-mcp-server
   address:
     url: http://kubernetes-mcp-server.default.svc.cluster.local:8080/mcp
   conditions:
+    - type: Accepted
+      status: "True"
+      reason: Valid
     - type: Ready
       status: "True"
+      reason: Available
 ```
 
 ## Test the Service
@@ -236,10 +234,11 @@ kubectl delete configmap kubernetes-mcp-server-config
 To uninstall the operator:
 
 ```bash
-# If you deployed to cluster
-make undeploy
+# If you installed from the release
+kubectl delete -f https://github.com/kubernetes-sigs/mcp-lifecycle-operator/releases/latest/download/install.yaml
 
-# Remove the CRDs
+# If you deployed from source
+make undeploy
 make uninstall
 ```
 

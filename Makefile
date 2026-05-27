@@ -63,15 +63,37 @@ fmt: ## Run go fmt against code.
 vet: ## Run go vet against code.
 	go vet ./...
 
+# Coverage profile written by `make test` (same default as kubebuilder scaffold).
+COVER_PROFILE ?= cover.out
+# Human-readable reports (not used by CI; see kubernetes-sigs/cluster-api `test-cover` pattern).
+COVER_OUTPUT_DIR ?= out
+
 .PHONY: test
 test: manifests generate fmt vet setup-envtest ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell "$(ENVTEST)" use $(ENVTEST_K8S_VERSION) --bin-dir "$(LOCALBIN)" -p path)" \
-		go test $$(go list -f '{{if or .TestGoFiles .XTestGoFiles}}{{.ImportPath}}{{end}}' ./... | grep -v /e2e) -coverprofile cover.out
+		go test $$(go list -f '{{if or .TestGoFiles .XTestGoFiles}}{{.ImportPath}}{{end}}' ./... | grep -v /e2e) -coverprofile $(COVER_PROFILE)
 
-# TODO(user): To use a different vendor for e2e tests, modify the setup under 'tests/e2e'.
-# The default setup assumes Kind is pre-installed and builds/loads the Manager Docker image locally.
-# CertManager is installed by default; skip with:
-# - CERT_MANAGER_INSTALL_SKIP=true
+.PHONY: test-cover
+test-cover: test ## Run unit tests and write text + HTML coverage reports under out/ (informational).
+	mkdir -p $(COVER_OUTPUT_DIR)
+	go tool cover -func=$(COVER_PROFILE) -o $(COVER_OUTPUT_DIR)/coverage.txt
+	go tool cover -html=$(COVER_PROFILE) -o $(COVER_OUTPUT_DIR)/coverage.html
+	@echo "Wrote $(COVER_OUTPUT_DIR)/coverage.html and $(COVER_OUTPUT_DIR)/coverage.txt"
+
+.PHONY: cover-func
+cover-func: ## Print per-function coverage to stdout (requires cover.out; run make test first).
+	@test -f $(COVER_PROFILE) || { echo "missing $(COVER_PROFILE); run make test first" >&2; exit 1; }
+	go tool cover -func=$(COVER_PROFILE)
+
+.PHONY: cover-html
+cover-html: ## Open HTML coverage in a browser (requires cover.out; run make test first).
+	@test -f $(COVER_PROFILE) || { echo "missing $(COVER_PROFILE); run make test first" >&2; exit 1; }
+	go tool cover -html=$(COVER_PROFILE)
+
+.PHONY: cover-clean
+cover-clean: ## Remove cover.out and out/coverage.{txt,html} from test-cover.
+	rm -f $(COVER_PROFILE) $(COVER_OUTPUT_DIR)/coverage.txt $(COVER_OUTPUT_DIR)/coverage.html
+
 KIND_CLUSTER ?= mcp-lifecycle-operator-test-e2e
 
 .PHONY: setup-test-e2e
@@ -82,20 +104,33 @@ setup-test-e2e: ## Set up a Kind cluster for e2e tests if it does not exist
 	}
 	@case "$$($(KIND) get clusters)" in \
 		*"$(KIND_CLUSTER)"*) \
-			echo "Kind cluster '$(KIND_CLUSTER)' already exists. Skipping creation." ;; \
+			echo "Kind cluster '$(KIND_CLUSTER)' already exists. Skipping creation."; \
+			$(KIND) export kubeconfig --name $(KIND_CLUSTER) ;; \
 		*) \
 			echo "Creating Kind cluster '$(KIND_CLUSTER)'..."; \
 			$(KIND) create cluster --name $(KIND_CLUSTER) ;; \
 	esac
 
+.PHONY: deploy-test-e2e
+deploy-test-e2e: setup-test-e2e manifests generate ## Build and deploy the operator to the Kind cluster for e2e tests.
+	$(MAKE) docker-build IMG=example.com/mcp-lifecycle-operator:e2e
+	$(KIND) load docker-image example.com/mcp-lifecycle-operator:e2e --name $(KIND_CLUSTER)
+	$(MAKE) install deploy IMG=example.com/mcp-lifecycle-operator:e2e
+	$(KUBECTL) rollout status deployment/mcp-lifecycle-operator-controller-manager -n mcp-lifecycle-operator-system --timeout=120s
+
 .PHONY: test-e2e
-test-e2e: setup-test-e2e manifests generate fmt vet ## Run the e2e tests. Expected an isolated environment using Kind.
-	KIND=$(KIND) KIND_CLUSTER=$(KIND_CLUSTER) go test -tags=e2e ./test/e2e/ -v -ginkgo.v
-	$(MAKE) cleanup-test-e2e
+test-e2e: ## Run the e2e tests (requires operator already deployed, see deploy-test-e2e).
+	go test -tags=e2e ./test/e2e/ -v -count=1 -timeout 10m
 
 .PHONY: cleanup-test-e2e
 cleanup-test-e2e: ## Tear down the Kind cluster used for e2e tests
 	@$(KIND) delete cluster --name $(KIND_CLUSTER)
+
+GOVULNCHECK_VERSION ?= v1.3.0
+
+.PHONY: govulncheck
+govulncheck: ## Run govulncheck (https://go.dev/doc/security/vuln/) against the module.
+	go run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) ./...
 
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint linter

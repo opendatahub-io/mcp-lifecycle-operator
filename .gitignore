@@ -16,6 +16,10 @@ Dockerfile.cross
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
+# Coverage reports from `make test-cover`
+out/coverage.html
+out/coverage.txt
+
 # Go workspace file
 go.work
 
@@ -40,3 +44,8 @@ __pycache__/
 site/
 site-src/reference/index.md
 .venv-mkdocs/
+
+# Do not set GOMODCACHE/GOCACHE to these paths; a module cache inside the repo
+# can break controller-gen (paths=./...) and produce spurious missing go.sum errors.
+.gomodcache/
+.gocache/

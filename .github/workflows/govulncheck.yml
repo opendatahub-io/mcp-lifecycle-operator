@@ -1,0 +1,35 @@
+# Copyright 2026 The Kubernetes Authors.
+
+name: Govulncheck
+
+on:
+  pull_request:
+    branches:
+      - main
+      - 'release-*'
+  schedule:
+    # Daily 08:00 UTC — catches new CVEs in the DB when no PRs run the check.
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  govulncheck:
+    name: Run on Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Clone the code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Setup Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
+        with:
+          go-version-file: go.mod
+
+      # Use the Makefile target (GOVULNCHECK_VERSION) instead of golang/govulncheck-action, which
+      # installs govulncheck@latest and can disagree with local `make govulncheck`.
+      - name: Run govulncheck
+        run: make govulncheck

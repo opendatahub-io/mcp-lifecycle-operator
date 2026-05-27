@@ -37,6 +37,18 @@ type MCPServerStatusApplyConfiguration struct {
 	ServiceName *string `json:"serviceName,omitempty"`
 	// Address contains the address of the MCP server service.
 	Address *MCPServerAddressApplyConfiguration `json:"address,omitempty"`
+	// ServerInfo contains identity and capability information reported by the
+	// MCP server during the protocol initialize handshake.
+	// This field is populated only after a successful handshake.
+	ServerInfo *MCPServerInfoApplyConfiguration `json:"serverInfo,omitempty"`
+	// HandshakeRetryCount tracks the number of consecutive MCP handshake
+	// failures for the current generation. Reset to 0 on success, spec change,
+	// or when reconciliation does not reach the handshake phase.
+	HandshakeRetryCount *int32 `json:"handshakeRetryCount,omitempty"`
+	// Replicas is the total number of desired pods targeted by the owned Deployment.
+	Replicas *int32 `json:"replicas,omitempty"`
+	// ReadyReplicas is the number of pods targeted by the owned Deployment with a Ready condition.
+	ReadyReplicas *int32 `json:"readyReplicas,omitempty"`
 	// Conditions represent the latest available observations of the MCPServer's state.
 	//
 	// Standard condition types:
@@ -95,6 +107,38 @@ func (b *MCPServerStatusApplyConfiguration) WithServiceName(value string) *MCPSe
 // If called multiple times, the Address field is set to the value of the last call.
 func (b *MCPServerStatusApplyConfiguration) WithAddress(value *MCPServerAddressApplyConfiguration) *MCPServerStatusApplyConfiguration {
 	b.Address = value
+	return b
+}
+
+// WithServerInfo sets the ServerInfo field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the ServerInfo field is set to the value of the last call.
+func (b *MCPServerStatusApplyConfiguration) WithServerInfo(value *MCPServerInfoApplyConfiguration) *MCPServerStatusApplyConfiguration {
+	b.ServerInfo = value
+	return b
+}
+
+// WithHandshakeRetryCount sets the HandshakeRetryCount field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the HandshakeRetryCount field is set to the value of the last call.
+func (b *MCPServerStatusApplyConfiguration) WithHandshakeRetryCount(value int32) *MCPServerStatusApplyConfiguration {
+	b.HandshakeRetryCount = &value
+	return b
+}
+
+// WithReplicas sets the Replicas field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the Replicas field is set to the value of the last call.
+func (b *MCPServerStatusApplyConfiguration) WithReplicas(value int32) *MCPServerStatusApplyConfiguration {
+	b.Replicas = &value
+	return b
+}
+
+// WithReadyReplicas sets the ReadyReplicas field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the ReadyReplicas field is set to the value of the last call.
+func (b *MCPServerStatusApplyConfiguration) WithReadyReplicas(value int32) *MCPServerStatusApplyConfiguration {
+	b.ReadyReplicas = &value
 	return b
 }
 

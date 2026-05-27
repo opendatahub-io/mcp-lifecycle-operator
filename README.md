@@ -2,39 +2,48 @@
 
 A Kubernetes operator that provides a declarative API to deploy, manage, and safely roll out MCP Servers, handling their full lifecycle with production-grade automation and ecosystem integrations.
 
+> **Note:** This project is currently in **alpha** (`v1alpha1`). APIs and behavior may change in future releases.
+
+## Documentation
+
+- [Introduction](https://mcp-lifecycle-operator.sigs.k8s.io/introduction/) - Architecture and MCPServer API overview
+- [Quickstart Guide](https://mcp-lifecycle-operator.sigs.k8s.io/guides/quickstart/) - Get up and running quickly
+- [Metrics](https://mcp-lifecycle-operator.sigs.k8s.io/operating/metrics/) - Prometheus metrics reference
+- [API Reference](https://mcp-lifecycle-operator.sigs.k8s.io/reference/) - Full MCPServer API documentation
+- [Complete MCPServer example](./config/samples/mcp_v1alpha1_mcpserver_complete.yaml) - YAML showing all available fields
+- [Contributing](https://mcp-lifecycle-operator.sigs.k8s.io/contributing/) - How to contribute to the project
+
 ## Prerequisites
 
 - Kubernetes cluster (v1.28+)
 - kubectl configured to access your cluster
-- Go 1.24+ (for building from source)
 
-## Testing on Your Cluster
+## Quick Start
 
-### 1. Install the CRDs
+### 1. Install the Operator
 
-First, install the Custom Resource Definitions:
+#### Option A: Install from Release (Recommended)
+
+Install the operator and CRDs directly from the [latest release](https://github.com/kubernetes-sigs/mcp-lifecycle-operator/releases/latest):
 
 ```bash
-make install
+kubectl apply -f https://github.com/kubernetes-sigs/mcp-lifecycle-operator/releases/latest/download/install.yaml
 ```
 
-This creates the `MCPServer` CRD in your cluster.
+This installs the CRDs, the controller Deployment, and all necessary RBAC resources in the `mcp-lifecycle-operator-system` namespace.
 
-### 2. Run the Controller
+#### Option B: Run Locally (for Development)
 
-You have two options:
-
-#### Option A: Run Locally (Recommended for Testing)
-
-Run the controller on your local machine (it will connect to your cluster):
+Clone the repository and run the controller on your local machine:
 
 ```bash
-make run
+make install  # Install the CRDs
+make run      # Run the controller locally
 ```
 
 Keep this terminal open. The controller logs will appear here.
 
-#### Option B: Deploy to Cluster
+#### Option C: Build and Deploy from Source
 
 Build and deploy the controller as a Deployment in your cluster:
 
@@ -48,7 +57,7 @@ make deploy IMG=<your-registry>/mcp-lifecycle-operator:latest
 
 Note: `docker-buildx` builds for multiple architectures (amd64, arm64, s390x, ppc64le) and pushes automatically.
 
-### 3. Create a Test MCPServer
+### 2. Create a Test MCPServer
 
 In a new terminal, create a test `MCPServer` resource:
 
@@ -63,13 +72,13 @@ spec:
   source:
     type: ContainerImage
     containerImage:
-      ref: aliok/mcp-server-streamable-http:latest
+      ref: quay.io/containers/kubernetes_mcp_server:latest
   config:
-    port: 8081
+    port: 8080
 EOF
 ```
 
-### 4. Verify the Deployment
+### 3. Verify the Deployment
 
 Check that the operator created the resources:
 
@@ -90,96 +99,73 @@ kubectl get pods -l mcp-server=test-server
 
 Expected output from `kubectl get mcpservers`:
 ```
-NAME          PHASE     IMAGE                                      PORT   ADDRESS                                            AGE
-test-server   Running   aliok/mcp-server-streamable-http:latest   8081   http://test-server.default.svc.cluster.local:8081/mcp  1m
+NAME          READY   ACCEPTED   IMAGE                                                  PORT   ADDRESS                                               AGE
+test-server   True    True       quay.io/containers/kubernetes_mcp_server:latest         8080   http://test-server.default.svc.cluster.local:8080/mcp   1m
 ```
 
 The `ADDRESS` column shows the cluster-internal URL that can be used by other workloads to connect to the MCP server.
 
-The status includes the service address for easy discovery:
+The status includes conditions and the service address for easy discovery:
 
 ```yaml
 status:
-  phase: Running
   deploymentName: test-server
   serviceName: test-server
   address:
-    url: http://test-server.default.svc.cluster.local:8081/mcp
+    url: http://test-server.default.svc.cluster.local:8080/mcp
   conditions:
+    - type: Accepted
+      status: "True"
+      reason: Valid
     - type: Ready
       status: "True"
+      reason: Available
 ```
 
-### 5. Test the Service
+### 4. Test the Service
 
 Port-forward to test connectivity:
 
 ```bash
-kubectl port-forward service/test-server 8081:8081
+kubectl port-forward service/test-server 8080:8080
 ```
 
 Then in another terminal:
 ```bash
-curl http://localhost:8081/mcp
+# Test the health endpoint
+curl http://localhost:8080/healthz
+
+# Test the MCP endpoint
+curl http://localhost:8080/mcp
 ```
 
 You should see a response from the MCP server.
 
-### 6. Uninstall (Optional)
+### 5. Uninstall (Optional)
 
 To remove the CRDs and operator:
 
 ```bash
-# If you deployed to cluster
-make undeploy
+# If you installed from the release
+kubectl delete -f https://github.com/kubernetes-sigs/mcp-lifecycle-operator/releases/latest/download/install.yaml
 
-# Remove the CRDs
+# If you deployed from source
+make undeploy
 make uninstall
 ```
 
 ## Examples
 
-For complete examples with ConfigMap support and detailed documentation, see the [examples/](./examples/) directory:
+For more examples, see the [examples/](./examples/) directory:
 
 - **[kubernetes-mcp-server](./examples/kubernetes-mcp-server/)** - Deploy the Kubernetes MCP Server with basic and ConfigMap-based configurations
-
-## Example MCPServer Resources
-
-### Streamable HTTP MCP Server
-
-```yaml
-apiVersion: mcp.x-k8s.io/v1alpha1
-kind: MCPServer
-metadata:
-  name: streamable-http-server
-  namespace: default
-spec:
-  source:
-    type: ContainerImage
-    containerImage:
-      ref: aliok/mcp-server-streamable-http:latest
-  config:
-    port: 8081
-```
-
-### Custom MCP Server
-
-```yaml
-apiVersion: mcp.x-k8s.io/v1alpha1
-kind: MCPServer
-metadata:
-  name: custom-server
-  namespace: default
-spec:
-  source:
-    type: ContainerImage
-    containerImage:
-      ref: my-registry.io/custom-mcp-server:1.0.0
-  config:
-    port: 8000
-```
+- **[everything-mcp-server](./examples/everything-mcp-server/)** - Deploy the Everything MCP Server
 
 ## Development
+
+### Prerequisites
+
+- Go 1.25+
 
 ### Building
 
@@ -190,8 +176,13 @@ make manifests generate
 # Build binary
 make build
 
-# Run tests
+# Run unit tests
 make test
+
+# Run e2e tests (requires Kind)
+make deploy-test-e2e   # creates Kind cluster, builds image, deploys operator
+make test-e2e          # runs e2e tests against the cluster
+make cleanup-test-e2e  # tears down the Kind cluster
 ```
 
 ## Community, discussion, contribution, and support

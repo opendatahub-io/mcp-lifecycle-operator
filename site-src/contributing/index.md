@@ -19,7 +19,8 @@ From the repository root:
 - **Build:** `make build`
 - **Format:** `make fmt`
 - **Lint / vet:** `make lint`
-- **Tests:** `make test`
+- **Tests:** `make test` (writes `cover.out` for coverage)
+- **Test coverage:** `make test` writes `cover.out`. Run `make test-cover` to refresh tests and emit `out/coverage.html` and `out/coverage.txt` (`go tool cover`). With `cover.out` present, `make cover-func` prints a per-function summary and `make cover-html` opens the interactive HTML report in a browser (local). Remove generated artifacts with `make cover-clean`.
 - **Generate manifests:** `make manifests generate`
 
 After making changes, open a pull request on GitHub. Ensure CI passes and address any review feedback.

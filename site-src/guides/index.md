@@ -11,9 +11,11 @@ Welcome to the MCP Lifecycle Operator guides! These guides will help you get sta
 Check out the [examples directory](https://github.com/kubernetes-sigs/mcp-lifecycle-operator/tree/main/examples) for complete, working examples:
 
 - **[Kubernetes MCP Server](https://github.com/kubernetes-sigs/mcp-lifecycle-operator/tree/main/examples/kubernetes-mcp-server)** - Deploy the Kubernetes MCP Server with ConfigMap configurations
+- **[Everything MCP Server](https://github.com/kubernetes-sigs/mcp-lifecycle-operator/tree/main/examples/everything-mcp-server)** - Deploy the Everything MCP Server
 
 ## Additional Resources
 
 - [API Reference](../reference/) - Complete API documentation
+- [Metrics](../operating/metrics.md) - Prometheus metrics exposed by the operator
 - [Contributing Guide](../contributing/index.md) - How to contribute to the project
 - [SIG Apps](https://github.com/kubernetes/community/blob/main/sig-apps/README.md) - Join the community and attend meetings

@@ -8,6 +8,8 @@ This directory contains the source files for the MCP Lifecycle Operator document
 site-src/
 ├── index.md              # Landing page
 ├── introduction.md       # Introduction and overview
+├── operating/            # Day-2 operations (metrics, future topics)
+│   └── metrics.md        # Prometheus metrics reference
 ├── guides/               # Getting started guides
 │   ├── index.md
 │   └── quickstart.md

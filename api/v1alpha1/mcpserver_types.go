@@ -332,6 +332,13 @@ type RuntimeConfig struct {
 
 // MCPServerSpec defines the desired state of MCPServer.
 type MCPServerSpec struct {
+	// ExtraLabels are applied to the Deployment metadata, PodTemplate metadata, and Service metadata.
+	// The operator-managed keys "app" and "mcp-server" cannot be overridden.
+	// +optional
+	ExtraLabels map[string]string `json:"extraLabels,omitempty"`
+	// ExtraAnnotations are applied to the Deployment metadata, PodTemplate metadata, and Service metadata.
+	// +optional
+	ExtraAnnotations map[string]string `json:"extraAnnotations,omitempty"`
 	// Source is a required field that defines where the MCP server should be sourced from.
 	// Currently supports container images, with potential for additional source types in the future.
 	// This configuration determines how the MCP server will be deployed and run.
@@ -348,6 +355,28 @@ type MCPServerSpec struct {
 	// If not specified, default runtime settings will be applied.
 	// +optional
 	Runtime RuntimeConfig `json:"runtime,omitzero"`
+
+	// MCP defines Model Context Protocol specific properties of the server.
+	// This section describes the MCP server's protocol-level behavior,
+	// as opposed to how it is sourced, configured, or managed at runtime.
+	// +optional
+	MCP MCPConfig `json:"mcp,omitzero"`
+}
+
+// MCPConfig defines Model Context Protocol specific properties of the server.
+// This section captures how the server behaves as an MCP server, such as whether
+// it maintains session state. These properties are distinct from container configuration
+// (config), deployment management (runtime), and image sourcing (source).
+type MCPConfig struct {
+	// Stateless indicates whether the MCP server is stateless (does not maintain session state).
+	// Only set this to true if the MCP server you are deploying declares that it is stateless.
+	// When true, the generated Service uses SessionAffinity "None", allowing
+	// requests to be freely load-balanced across replicas.
+	// When false or unset, the Service uses SessionAffinity "ClientIP" so that
+	// a given client's requests are routed to the same pod.
+	// Defaults to false (stateful).
+	// +optional
+	Stateless *bool `json:"stateless,omitempty"`
 }
 
 // MCPServerAddress contains the address information for the MCPServer.
@@ -356,6 +385,48 @@ type MCPServerAddress struct {
 	// Format: http://<servicename>.<namespace>.svc.cluster.local:<port>/<path>
 	// +optional
 	URL string `json:"url,omitempty"`
+}
+
+// MCPServerCapabilities describes which MCP protocol capabilities the server advertises
+// during the initialize handshake.
+type MCPServerCapabilities struct {
+	// Tools indicates the server supports tool listing and invocation.
+	// +optional
+	Tools bool `json:"tools,omitempty"`
+	// Resources indicates the server supports resource listing and reading.
+	// +optional
+	Resources bool `json:"resources,omitempty"`
+	// Prompts indicates the server supports prompt templates.
+	// +optional
+	Prompts bool `json:"prompts,omitempty"`
+	// Logging indicates the server supports sending log messages.
+	// +optional
+	Logging bool `json:"logging,omitempty"`
+	// Completions indicates the server supports argument autocompletion.
+	// +optional
+	Completions bool `json:"completions,omitempty"`
+}
+
+// MCPServerInfo contains identity and capability information reported by the
+// MCP server during the protocol initialize handshake.
+type MCPServerInfo struct {
+	// Name is the server's self-reported name.
+	// +optional
+	Name string `json:"name,omitempty"`
+	// Version is the server's self-reported version.
+	// +optional
+	Version string `json:"version,omitempty"`
+	// ProtocolVersion is the MCP protocol version negotiated during the handshake.
+	// +optional
+	ProtocolVersion string `json:"protocolVersion,omitempty"`
+	// Instructions describes how to use the server and its features.
+	// This can be used by clients to improve the LLM's understanding of
+	// available tools, resources, etc.
+	// +optional
+	Instructions string `json:"instructions,omitempty"`
+	// Capabilities lists which MCP protocol features the server supports.
+	// +optional
+	Capabilities *MCPServerCapabilities `json:"capabilities,omitempty"`
 }
 
 // MCPServerStatus defines the observed state of MCPServer.
@@ -377,6 +448,26 @@ type MCPServerStatus struct {
 	// Address contains the address of the MCP server service.
 	// +optional
 	Address *MCPServerAddress `json:"address,omitempty"`
+
+	// ServerInfo contains identity and capability information reported by the
+	// MCP server during the protocol initialize handshake.
+	// This field is populated only after a successful handshake.
+	// +optional
+	ServerInfo *MCPServerInfo `json:"serverInfo,omitempty"`
+
+	// HandshakeRetryCount tracks the number of consecutive MCP handshake
+	// failures for the current generation. Reset to 0 on success, spec change,
+	// or when reconciliation does not reach the handshake phase.
+	// +optional
+	HandshakeRetryCount int32 `json:"handshakeRetryCount,omitempty"`
+
+	// Replicas is the total number of desired pods targeted by the owned Deployment.
+	// +optional
+	Replicas int32 `json:"replicas,omitempty"`
+
+	// ReadyReplicas is the number of pods targeted by the owned Deployment with a Ready condition.
+	// +optional
+	ReadyReplicas int32 `json:"readyReplicas,omitempty"`
 
 	// Conditions represent the latest available observations of the MCPServer's state.
 	//

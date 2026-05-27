@@ -36,10 +36,16 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &apiv1alpha1.ContainerImageSourceApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("HealthConfig"):
 		return &apiv1alpha1.HealthConfigApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("MCPConfig"):
+		return &apiv1alpha1.MCPConfigApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("MCPServer"):
 		return &apiv1alpha1.MCPServerApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("MCPServerAddress"):
 		return &apiv1alpha1.MCPServerAddressApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("MCPServerCapabilities"):
+		return &apiv1alpha1.MCPServerCapabilitiesApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("MCPServerInfo"):
+		return &apiv1alpha1.MCPServerInfoApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("MCPServerSpec"):
 		return &apiv1alpha1.MCPServerSpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("MCPServerStatus"):

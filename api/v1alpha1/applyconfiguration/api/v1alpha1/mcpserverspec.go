@@ -23,6 +23,11 @@ package v1alpha1
 //
 // MCPServerSpec defines the desired state of MCPServer.
 type MCPServerSpecApplyConfiguration struct {
+	// ExtraLabels are applied to the Deployment metadata, PodTemplate metadata, and Service metadata.
+	// The operator-managed keys "app" and "mcp-server" cannot be overridden.
+	ExtraLabels map[string]string `json:"extraLabels,omitempty"`
+	// ExtraAnnotations are applied to the Deployment metadata, PodTemplate metadata, and Service metadata.
+	ExtraAnnotations map[string]string `json:"extraAnnotations,omitempty"`
 	// Source is a required field that defines where the MCP server should be sourced from.
 	// Currently supports container images, with potential for additional source types in the future.
 	// This configuration determines how the MCP server will be deployed and run.
@@ -34,12 +39,44 @@ type MCPServerSpecApplyConfiguration struct {
 	// Runtime defines runtime management configuration.
 	// If not specified, default runtime settings will be applied.
 	Runtime *RuntimeConfigApplyConfiguration `json:"runtime,omitempty"`
+	// MCP defines Model Context Protocol specific properties of the server.
+	// This section describes the MCP server's protocol-level behavior,
+	// as opposed to how it is sourced, configured, or managed at runtime.
+	MCP *MCPConfigApplyConfiguration `json:"mcp,omitempty"`
 }
 
 // MCPServerSpecApplyConfiguration constructs a declarative configuration of the MCPServerSpec type for use with
 // apply.
 func MCPServerSpec() *MCPServerSpecApplyConfiguration {
 	return &MCPServerSpecApplyConfiguration{}
+}
+
+// WithExtraLabels puts the entries into the ExtraLabels field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, the entries provided by each call will be put on the ExtraLabels field,
+// overwriting an existing map entries in ExtraLabels field with the same key.
+func (b *MCPServerSpecApplyConfiguration) WithExtraLabels(entries map[string]string) *MCPServerSpecApplyConfiguration {
+	if b.ExtraLabels == nil && len(entries) > 0 {
+		b.ExtraLabels = make(map[string]string, len(entries))
+	}
+	for k, v := range entries {
+		b.ExtraLabels[k] = v
+	}
+	return b
+}
+
+// WithExtraAnnotations puts the entries into the ExtraAnnotations field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, the entries provided by each call will be put on the ExtraAnnotations field,
+// overwriting an existing map entries in ExtraAnnotations field with the same key.
+func (b *MCPServerSpecApplyConfiguration) WithExtraAnnotations(entries map[string]string) *MCPServerSpecApplyConfiguration {
+	if b.ExtraAnnotations == nil && len(entries) > 0 {
+		b.ExtraAnnotations = make(map[string]string, len(entries))
+	}
+	for k, v := range entries {
+		b.ExtraAnnotations[k] = v
+	}
+	return b
 }
 
 // WithSource sets the Source field in the declarative configuration to the given value
@@ -63,5 +100,13 @@ func (b *MCPServerSpecApplyConfiguration) WithConfig(value *ServerConfigApplyCon
 // If called multiple times, the Runtime field is set to the value of the last call.
 func (b *MCPServerSpecApplyConfiguration) WithRuntime(value *RuntimeConfigApplyConfiguration) *MCPServerSpecApplyConfiguration {
 	b.Runtime = value
+	return b
+}
+
+// WithMCP sets the MCP field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the MCP field is set to the value of the last call.
+func (b *MCPServerSpecApplyConfiguration) WithMCP(value *MCPConfigApplyConfiguration) *MCPServerSpecApplyConfiguration {
+	b.MCP = value
 	return b
 }
