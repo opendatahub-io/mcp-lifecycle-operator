@@ -141,6 +141,10 @@ func deploymentNeedsUpdate(mcpServer *mcpv1alpha1.MCPServer, existing, desired *
 		return true
 	}
 
+	if len(newPodSpec.Containers) == 0 {
+		return false // update would be rejected anyways by api server
+	}
+
 	return !equality.Semantic.DeepDerivative(newPodSpec, oldPodSpec) ||
 		// Explicit DeepEqual checks for fields that can be zeroed/removed by the user.
 		// DeepDerivative skips zero-value fields in the desired spec, so removals

@@ -95,6 +95,44 @@ var _ = Describe("MCPServer Controller - reconcileDeployment", func() {
 		Expect(deployment).NotTo(BeNil())
 	})
 
+	// Defensive guard: createDeployment always produces a container today, so
+	// this scenario cannot be triggered through reconcileDeployment. We test
+	// deploymentNeedsUpdate directly to ensure the len(newPodSpec.Containers)==0
+	// guard prevents an index-out-of-bounds panic if a future refactor (e.g. a
+	// new source type) produces a desired deployment with no containers.
+	It("should return false from deploymentNeedsUpdate when desired deployment has empty containers list", func() {
+		By("Setting up a valid existing deployment and an empty desired deployment")
+		mcpServer := newTestMCPServer("test-empty-desired")
+
+		existingDeployment := &appsv1.Deployment{
+			Spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{
+								Name:  ManagedWorkloadName,
+								Image: "docker.io/library/test-image:latest",
+							},
+						},
+					},
+				},
+			},
+		}
+
+		desiredDeployment := &appsv1.Deployment{
+			Spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						Containers: nil,
+					},
+				},
+			},
+		}
+
+		By("Calling deploymentNeedsUpdate should not panic and should return false")
+		Expect(deploymentNeedsUpdate(mcpServer, existingDeployment, desiredDeployment, false)).To(BeFalse())
+	})
+
 	It("should recover when existing deployment has empty containers list", func() {
 		By("Setting up a fake client with a deployment that has no containers")
 		mcpServer := newTestMCPServer("test-empty-containers")
