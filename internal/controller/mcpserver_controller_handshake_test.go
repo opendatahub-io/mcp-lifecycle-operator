@@ -92,6 +92,7 @@ var _ = Describe("MCPServer Controller - MCP Handshake Validation", func() {
 			MCPDialer: func(ctx context.Context, url string) (*mcpv1alpha1.MCPServerInfo, error) {
 				return nil, fmt.Errorf("connection refused")
 			},
+			APIReader: k8sClient,
 		}
 
 		By("Initial reconciliation creates deployment")
@@ -144,6 +145,7 @@ var _ = Describe("MCPServer Controller - MCP Handshake Validation", func() {
 			MCPDialer: func(ctx context.Context, url string) (*mcpv1alpha1.MCPServerInfo, error) {
 				return nil, nil
 			},
+			APIReader: k8sClient,
 		}
 
 		By("Initial reconciliation creates deployment")
@@ -193,6 +195,7 @@ var _ = Describe("MCPServer Controller - MCP Handshake Validation", func() {
 				dialerCalled = true
 				return nil, nil
 			},
+			APIReader: k8sClient,
 		}
 
 		By("Initial reconciliation creates deployment")
@@ -240,6 +243,7 @@ var _ = Describe("MCPServer Controller - MCP Handshake Validation", func() {
 				dialerCalled = true
 				return nil, nil
 			},
+			APIReader: k8sClient,
 		}
 
 		By("Setting replicas to 0")
@@ -278,6 +282,7 @@ var _ = Describe("MCPServer Controller - MCP Handshake Validation", func() {
 			MCPDialer: func(ctx context.Context, url string) (*mcpv1alpha1.MCPServerInfo, error) {
 				return nil, fmt.Errorf("MCP protocol error")
 			},
+			APIReader: k8sClient,
 		}
 
 		By("Initial reconciliation creates deployment")
@@ -326,6 +331,7 @@ var _ = Describe("MCPServer Controller - MCP Handshake Validation", func() {
 					ProtocolVersion: "2025-03-26",
 				}, nil
 			},
+			APIReader: k8sClient,
 		}
 
 		By("Initial reconciliation creates deployment")
@@ -595,6 +601,7 @@ var _ = Describe("MCPServer Controller - MCP Handshake Validation", func() {
 				receivedCtx = ctx
 				return nil, nil
 			},
+			APIReader: k8sClient,
 		}
 
 		By("Initial reconciliation creates deployment")
@@ -636,6 +643,7 @@ var _ = Describe("MCPServer Controller - MCP Handshake Validation", func() {
 			MCPDialer: func(ctx context.Context, url string) (*mcpv1alpha1.MCPServerInfo, error) {
 				return nil, fmt.Errorf("connection refused")
 			},
+			APIReader: k8sClient,
 		}
 
 		By("Initial reconciliation creates deployment")
@@ -709,6 +717,7 @@ var _ = Describe("MCPServer Controller - MCP Handshake Validation", func() {
 			MCPDialer: func(ctx context.Context, url string) (*mcpv1alpha1.MCPServerInfo, error) {
 				return nil, fmt.Errorf("connection refused")
 			},
+			APIReader: k8sClient,
 		}
 
 		By("Initial reconciliation creates deployment")
@@ -759,6 +768,7 @@ var _ = Describe("MCPServer Controller - MCP Handshake Validation", func() {
 				}
 				return &mcpv1alpha1.MCPServerInfo{Name: "test"}, nil
 			},
+			APIReader: k8sClient,
 		}
 
 		By("Initial reconciliation creates deployment")
@@ -806,6 +816,7 @@ var _ = Describe("MCPServer Controller - MCP Handshake Validation", func() {
 			MCPDialer: func(ctx context.Context, url string) (*mcpv1alpha1.MCPServerInfo, error) {
 				return nil, fmt.Errorf("POST %s: Unauthorized", url)
 			},
+			APIReader: k8sClient,
 		}
 
 		By("Creating deployment and marking it available")
@@ -860,6 +871,7 @@ var _ = Describe("MCPServer Controller - MCP Handshake Validation", func() {
 					},
 				}, nil
 			},
+			APIReader: k8sClient,
 		}
 
 		By("Initial reconciliation creates deployment")
@@ -915,6 +927,7 @@ var _ = Describe("MCPServer Controller - MCP Handshake Validation", func() {
 					ProtocolVersion: "2025-06-18",
 				}, nil
 			},
+			APIReader: k8sClient,
 		}
 
 		By("Initial reconciliation creates deployment")
@@ -967,6 +980,7 @@ var _ = Describe("MCPServer Controller - MCP Handshake Validation", func() {
 			MCPDialer: func(ctx context.Context, url string) (*mcpv1alpha1.MCPServerInfo, error) {
 				return nil, fmt.Errorf("POST %s: Forbidden", url)
 			},
+			APIReader: k8sClient,
 		}
 
 		By("Creating deployment and marking it available")

@@ -111,7 +111,7 @@ func (r *MCPServerReconciler) getPodFailureMessage(
 	}
 
 	podList := &corev1.PodList{}
-	if err := r.List(ctx, podList,
+	if err := r.APIReader.List(ctx, podList,
 		client.InNamespace(deployment.Namespace),
 		client.MatchingLabelsSelector{Selector: selector},
 	); err != nil {

@@ -76,8 +76,9 @@ var _ = Describe("MCPServer Controller - Error Recovery", func() {
 
 		It("should recover from Failed to Pending when missing ConfigMap is created", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			By("First reconcile fails due to missing ConfigMap")
@@ -168,8 +169,9 @@ var _ = Describe("MCPServer Controller - Error Recovery", func() {
 
 		It("should recover from Failed to Pending when missing Secret is created", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			By("First reconcile fails due to missing Secret")
@@ -264,8 +266,9 @@ var _ = Describe("MCPServer Controller - Error Recovery", func() {
 
 		It("should recover from Failed to Pending when missing storage ConfigMap is created", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			By("First reconcile fails due to missing storage ConfigMap")
@@ -356,8 +359,9 @@ var _ = Describe("MCPServer Controller - Error Recovery", func() {
 
 		It("should recover from Failed to Pending when missing env valueFrom ConfigMap is created", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			By("First reconcile fails due to missing ConfigMap")
@@ -452,8 +456,9 @@ var _ = Describe("MCPServer Controller - Error Recovery", func() {
 
 		It("should recover from Failed to Pending when missing env valueFrom Secret is created", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			By("First reconcile fails due to missing Secret")
@@ -545,8 +550,9 @@ var _ = Describe("MCPServer Controller - Optimistic Locking Conflicts", func() {
 	It("should return conflict error when deployment update encounters optimistic locking conflict", func() {
 		By("Initial reconcile to create resources")
 		initialReconciler := &MCPServerReconciler{
-			Client: k8sClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    k8sClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 		_, err := initialReconciler.Reconcile(ctx, reconcile.Request{
 			NamespacedName: typeNamespacedName,
@@ -579,8 +585,9 @@ var _ = Describe("MCPServer Controller - Optimistic Locking Conflicts", func() {
 		})
 
 		conflictReconciler := &MCPServerReconciler{
-			Client: interceptedClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    interceptedClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 
 		By("Reconciling with conflict interceptor")
@@ -595,8 +602,9 @@ var _ = Describe("MCPServer Controller - Optimistic Locking Conflicts", func() {
 	It("should succeed on retry after conflict is resolved", func() {
 		By("Initial reconcile to create resources")
 		initialReconciler := &MCPServerReconciler{
-			Client: k8sClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    k8sClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 		_, err := initialReconciler.Reconcile(ctx, reconcile.Request{
 			NamespacedName: typeNamespacedName,
@@ -631,8 +639,9 @@ var _ = Describe("MCPServer Controller - Optimistic Locking Conflicts", func() {
 		})
 
 		conflictReconciler := &MCPServerReconciler{
-			Client: interceptedClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    interceptedClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 
 		By("First reconcile fails with conflict")
@@ -659,8 +668,9 @@ var _ = Describe("MCPServer Controller - Optimistic Locking Conflicts", func() {
 	It("should return conflict error when service update encounters optimistic locking conflict", func() {
 		By("Initial reconcile to create resources")
 		initialReconciler := &MCPServerReconciler{
-			Client: k8sClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    k8sClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 		_, err := initialReconciler.Reconcile(ctx, reconcile.Request{
 			NamespacedName: typeNamespacedName,
@@ -693,8 +703,9 @@ var _ = Describe("MCPServer Controller - Optimistic Locking Conflicts", func() {
 		})
 
 		conflictReconciler := &MCPServerReconciler{
-			Client: interceptedClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    interceptedClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 
 		By("Reconciling with conflict interceptor")

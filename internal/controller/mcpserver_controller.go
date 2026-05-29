@@ -154,6 +154,7 @@ type MCPServerReconciler struct {
 	Scheme    *runtime.Scheme
 	Recorder  events.EventRecorder
 	MCPDialer func(ctx context.Context, url string) (*mcpv1alpha1.MCPServerInfo, error) // nil = use real MCP handshake
+	APIReader client.Reader
 }
 
 // +kubebuilder:rbac:groups=mcp.x-k8s.io,resources=mcpservers,verbs=get;list;watch;create;update;patch;delete

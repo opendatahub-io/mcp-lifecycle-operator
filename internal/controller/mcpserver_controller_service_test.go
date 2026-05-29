@@ -61,8 +61,9 @@ var _ = Describe("MCPServer Controller - Address URL", func() {
 			Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespacedName,
@@ -81,8 +82,9 @@ var _ = Describe("MCPServer Controller - Address URL", func() {
 			Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespacedName,
@@ -101,8 +103,9 @@ var _ = Describe("MCPServer Controller - Address URL", func() {
 			Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespacedName,
@@ -121,8 +124,9 @@ var _ = Describe("MCPServer Controller - Address URL", func() {
 			Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -167,8 +171,9 @@ var _ = Describe("MCPServer Controller - Service Update", func() {
 			Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespacedName,
@@ -235,8 +240,9 @@ var _ = Describe("MCPServer Controller - reconcileService", func() {
 		Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 
 		reconciler := &MCPServerReconciler{
-			Client: k8sClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    k8sClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 
 		err := reconciler.reconcileService(ctx, mcpServer)
@@ -257,8 +263,9 @@ var _ = Describe("MCPServer Controller - reconcileService", func() {
 		Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 
 		reconciler := &MCPServerReconciler{
-			Client: k8sClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    k8sClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 
 		Expect(reconciler.reconcileService(ctx, mcpServer)).To(Succeed())
@@ -293,8 +300,9 @@ var _ = Describe("MCPServer Controller - Stateless Service", func() {
 		Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 
 		reconciler := &MCPServerReconciler{
-			Client: k8sClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    k8sClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 
 		err := reconciler.reconcileService(ctx, mcpServer)
@@ -316,8 +324,9 @@ var _ = Describe("MCPServer Controller - Stateless Service", func() {
 		Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 
 		reconciler := &MCPServerReconciler{
-			Client: k8sClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    k8sClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 
 		err := reconciler.reconcileService(ctx, mcpServer)
@@ -340,8 +349,9 @@ var _ = Describe("MCPServer Controller - Stateless Service", func() {
 		Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 
 		reconciler := &MCPServerReconciler{
-			Client: k8sClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    k8sClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 
 		err := reconciler.reconcileService(ctx, mcpServer)
@@ -361,8 +371,9 @@ var _ = Describe("MCPServer Controller - Stateless Service", func() {
 		Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 
 		controllerReconciler := &MCPServerReconciler{
-			Client: k8sClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    k8sClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 
 		By("Reconciling to create the service with ClientIP affinity")
@@ -398,8 +409,9 @@ var _ = Describe("MCPServer Controller - Stateless Service", func() {
 		Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 
 		controllerReconciler := &MCPServerReconciler{
-			Client: k8sClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    k8sClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 
 		By("Reconciling to create the service with no session affinity")
@@ -468,8 +480,9 @@ var _ = Describe("MCPServer Controller - Service Reconciliation Failures", func(
 		})
 
 		serviceFailureReconciler := &MCPServerReconciler{
-			Client: interceptedClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    interceptedClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 
 		By("Reconciling with service creation failure")
@@ -501,8 +514,9 @@ var _ = Describe("MCPServer Controller - Service Reconciliation Failures", func(
 	It("should update status with ServiceUnavailable when service update fails", func() {
 		By("Initial reconcile to create resources")
 		initialReconciler := &MCPServerReconciler{
-			Client: k8sClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    k8sClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 		_, err := initialReconciler.Reconcile(ctx, reconcile.Request{
 			NamespacedName: typeNamespacedName,
@@ -530,8 +544,9 @@ var _ = Describe("MCPServer Controller - Service Reconciliation Failures", func(
 		})
 
 		serviceFailureReconciler := &MCPServerReconciler{
-			Client: interceptedClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    interceptedClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 
 		By("Updating MCPServer spec to trigger service reconciliation")
@@ -620,8 +635,9 @@ var _ = Describe("MCPServer Controller - Server-Side Apply for Status", func() {
 		})
 
 		controllerReconciler := &MCPServerReconciler{
-			Client: interceptedClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    interceptedClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 
 		_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -656,8 +672,9 @@ var _ = Describe("MCPServer Controller - Service ExtraLabels/ExtraAnnotations on
 		}()
 
 		reconciler := &MCPServerReconciler{
-			Client: k8sClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    k8sClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 
 		err := reconciler.reconcileService(ctx, mcpServer)

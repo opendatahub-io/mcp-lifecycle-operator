@@ -55,6 +55,7 @@ func newReconcilerForTestWithFakeEvents(cli client.Client, sch *runtime.Scheme) 
 		Scheme:    sch,
 		Recorder:  fr,
 		MCPDialer: testMCPDialerNoop,
+		APIReader: cli,
 	}, fr
 }
 

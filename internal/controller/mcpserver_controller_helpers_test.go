@@ -145,7 +145,7 @@ var _ = Describe("findMCPServersForResource", func() {
 			WithIndex(&mcpv1alpha1.MCPServer{}, configMapIndexKey, extractConfigMapNames).
 			Build()
 
-		r := &MCPServerReconciler{Client: fakeClient, Scheme: k8sClient.Scheme()}
+		r := &MCPServerReconciler{Client: fakeClient, Scheme: k8sClient.Scheme(), APIReader: fakeClient}
 		configMap := &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{Name: "my-config", Namespace: "default"},
 		}
@@ -189,7 +189,7 @@ var _ = Describe("findMCPServersForResource", func() {
 			WithIndex(&mcpv1alpha1.MCPServer{}, secretIndexKey, extractSecretNames).
 			Build()
 
-		r := &MCPServerReconciler{Client: fakeClient, Scheme: k8sClient.Scheme()}
+		r := &MCPServerReconciler{Client: fakeClient, Scheme: k8sClient.Scheme(), APIReader: fakeClient}
 		secret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{Name: "my-secret", Namespace: "default"},
 		}
@@ -207,7 +207,7 @@ var _ = Describe("findMCPServersForResource", func() {
 			WithIndex(&mcpv1alpha1.MCPServer{}, configMapIndexKey, extractConfigMapNames).
 			Build()
 
-		r := &MCPServerReconciler{Client: fakeClient, Scheme: k8sClient.Scheme()}
+		r := &MCPServerReconciler{Client: fakeClient, Scheme: k8sClient.Scheme(), APIReader: fakeClient}
 		configMap := &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{Name: "unused-config", Namespace: "default"},
 		}
@@ -221,7 +221,7 @@ var _ = Describe("findMCPServersForResource", func() {
 			WithScheme(k8sClient.Scheme()).
 			Build()
 
-		r := &MCPServerReconciler{Client: fakeClient, Scheme: k8sClient.Scheme()}
+		r := &MCPServerReconciler{Client: fakeClient, Scheme: k8sClient.Scheme(), APIReader: fakeClient}
 
 		requests := r.findMCPServersForResource(
 			context.Background(),

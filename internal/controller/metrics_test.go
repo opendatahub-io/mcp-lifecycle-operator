@@ -75,7 +75,7 @@ var _ = Describe("MCPServer Metrics", func() {
 		}
 		Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 
-		reconciler := &MCPServerReconciler{Client: k8sClient, Scheme: k8sClient.Scheme()}
+		reconciler := &MCPServerReconciler{Client: k8sClient, Scheme: k8sClient.Scheme(), APIReader: k8sClient}
 		_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
 		Expect(err).NotTo(HaveOccurred())
 
@@ -122,7 +122,7 @@ var _ = Describe("MCPServer Metrics", func() {
 		}
 		Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 
-		reconciler := &MCPServerReconciler{Client: k8sClient, Scheme: k8sClient.Scheme()}
+		reconciler := &MCPServerReconciler{Client: k8sClient, Scheme: k8sClient.Scheme(), APIReader: k8sClient}
 		_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
 		Expect(err).NotTo(HaveOccurred())
 
@@ -158,7 +158,7 @@ var _ = Describe("MCPServer Metrics", func() {
 		}
 		Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 
-		reconciler := &MCPServerReconciler{Client: k8sClient, Scheme: k8sClient.Scheme()}
+		reconciler := &MCPServerReconciler{Client: k8sClient, Scheme: k8sClient.Scheme(), APIReader: k8sClient}
 		_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
 		Expect(err).NotTo(HaveOccurred())
 
@@ -200,7 +200,7 @@ var _ = Describe("MCPServer Metrics", func() {
 		}
 		Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 
-		reconciler := &MCPServerReconciler{Client: k8sClient, Scheme: k8sClient.Scheme()}
+		reconciler := &MCPServerReconciler{Client: k8sClient, Scheme: k8sClient.Scheme(), APIReader: k8sClient}
 		_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
 		Expect(err).NotTo(HaveOccurred())
 
@@ -250,7 +250,7 @@ var _ = Describe("MCPServer Metrics", func() {
 			},
 		})
 
-		reconciler := &MCPServerReconciler{Client: interceptedClient, Scheme: k8sClient.Scheme()}
+		reconciler := &MCPServerReconciler{Client: interceptedClient, Scheme: k8sClient.Scheme(), APIReader: k8sClient}
 		_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: depFailNN})
 		Expect(err).To(HaveOccurred())
 
@@ -299,7 +299,7 @@ var _ = Describe("MCPServer Metrics", func() {
 			},
 		})
 
-		reconciler := &MCPServerReconciler{Client: interceptedClient, Scheme: k8sClient.Scheme()}
+		reconciler := &MCPServerReconciler{Client: interceptedClient, Scheme: k8sClient.Scheme(), APIReader: k8sClient}
 		_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: svcFailNN})
 		Expect(err).To(HaveOccurred())
 

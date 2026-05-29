@@ -68,8 +68,9 @@ var _ = Describe("MCPServer Controller - reconcileDeployment", func() {
 		Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 
 		reconciler := &MCPServerReconciler{
-			Client: k8sClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    k8sClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 
 		deployment, err := reconciler.reconcileDeployment(ctx, mcpServer)
@@ -83,8 +84,9 @@ var _ = Describe("MCPServer Controller - reconcileDeployment", func() {
 		Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 
 		reconciler := &MCPServerReconciler{
-			Client: k8sClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    k8sClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 
 		_, err := reconciler.reconcileDeployment(ctx, mcpServer)
@@ -173,8 +175,9 @@ var _ = Describe("MCPServer Controller - reconcileDeployment", func() {
 			Build()
 
 		reconciler := &MCPServerReconciler{
-			Client: fakeClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    fakeClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 
 		By("Reconciling should not panic and should restore the containers")
@@ -224,8 +227,9 @@ var _ = Describe("MCPServer Controller - Deployment Reconciliation Failures", fu
 		})
 
 		deploymentFailureReconciler := &MCPServerReconciler{
-			Client: interceptedClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    interceptedClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 
 		By("Reconciling with deployment creation failure")
@@ -255,8 +259,9 @@ var _ = Describe("MCPServer Controller - Deployment Reconciliation Failures", fu
 	It("should update status with DeploymentUnavailable when deployment update fails", func() {
 		By("Initial reconcile to create resources")
 		initialReconciler := &MCPServerReconciler{
-			Client: k8sClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    k8sClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 		_, err := initialReconciler.Reconcile(ctx, reconcile.Request{
 			NamespacedName: typeNamespacedName,
@@ -284,8 +289,9 @@ var _ = Describe("MCPServer Controller - Deployment Reconciliation Failures", fu
 		})
 
 		deploymentFailureReconciler := &MCPServerReconciler{
-			Client: interceptedClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    interceptedClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 
 		By("Updating MCPServer spec to trigger deployment reconciliation")
@@ -376,8 +382,9 @@ var _ = Describe("MCPServer Controller - Transient Validation Errors", func() {
 		})
 
 		transientReconciler := &MCPServerReconciler{
-			Client: interceptedClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    interceptedClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 
 		By("Reconciling with transient ConfigMap validation failure")
@@ -412,8 +419,9 @@ var _ = Describe("MCPServer Controller - Transient Validation Errors", func() {
 		Expect(k8sClient.Create(ctx, configMap)).To(Succeed())
 
 		initialReconciler := &MCPServerReconciler{
-			Client: k8sClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    k8sClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 		_, err := initialReconciler.Reconcile(ctx, reconcile.Request{
 			NamespacedName: typeNamespacedName,
@@ -448,8 +456,9 @@ var _ = Describe("MCPServer Controller - Transient Validation Errors", func() {
 		})
 
 		transientReconciler := &MCPServerReconciler{
-			Client: interceptedClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    interceptedClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 
 		By("Reconciling with transient failure")
@@ -506,8 +515,9 @@ var _ = Describe("MCPServer Controller - Resource Requirements", func() {
 
 	It("should create deployment with resources", func() {
 		controllerReconciler := &MCPServerReconciler{
-			Client: k8sClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    k8sClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 
 		_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -532,8 +542,9 @@ var _ = Describe("MCPServer Controller - Resource Requirements", func() {
 
 	It("should update deployment when resources change", func() {
 		controllerReconciler := &MCPServerReconciler{
-			Client: k8sClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    k8sClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 
 		By("Reconciling to create the initial deployment with resources")
@@ -584,8 +595,9 @@ var _ = Describe("MCPServer Controller - Resource Requirements", func() {
 
 	It("should update deployment when resources are removed", func() {
 		controllerReconciler := &MCPServerReconciler{
-			Client: k8sClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    k8sClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 
 		By("Reconciling to create the initial deployment with resources")
@@ -640,8 +652,9 @@ var _ = Describe("MCPServer Controller - Resource Requirements", func() {
 		}()
 
 		controllerReconciler := &MCPServerReconciler{
-			Client: k8sClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    k8sClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 
 		_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -677,8 +690,9 @@ var _ = Describe("MCPServer Controller - Resource Requirements", func() {
 		}()
 
 		controllerReconciler := &MCPServerReconciler{
-			Client: k8sClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    k8sClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 
 		_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -716,8 +730,9 @@ var _ = Describe("MCPServer Controller - Resource Requirements", func() {
 		}()
 
 		controllerReconciler := &MCPServerReconciler{
-			Client: k8sClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    k8sClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 
 		_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -756,8 +771,9 @@ var _ = Describe("MCPServer Controller - Resource Requirements", func() {
 		}()
 
 		controllerReconciler := &MCPServerReconciler{
-			Client: k8sClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    k8sClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 
 		_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -824,8 +840,9 @@ var _ = Describe("MCPServer Controller - Health Probes", func() {
 
 	It("should create deployment with health probes", func() {
 		controllerReconciler := &MCPServerReconciler{
-			Client: k8sClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    k8sClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 
 		_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -859,8 +876,9 @@ var _ = Describe("MCPServer Controller - Health Probes", func() {
 
 	It("should update deployment when probes change", func() {
 		controllerReconciler := &MCPServerReconciler{
-			Client: k8sClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    k8sClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 
 		By("Reconciling to create the initial deployment with probes")
@@ -928,8 +946,9 @@ var _ = Describe("MCPServer Controller - Health Probes", func() {
 
 	It("should update deployment when probes are removed", func() {
 		controllerReconciler := &MCPServerReconciler{
-			Client: k8sClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    k8sClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 
 		By("Reconciling to create the initial deployment with probes")
@@ -991,8 +1010,9 @@ var _ = Describe("MCPServer Controller - Health Probes", func() {
 		}()
 
 		controllerReconciler := &MCPServerReconciler{
-			Client: k8sClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    k8sClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 
 		_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -1033,8 +1053,9 @@ var _ = Describe("MCPServer Controller - Health Probes", func() {
 		}()
 
 		controllerReconciler := &MCPServerReconciler{
-			Client: k8sClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    k8sClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 
 		_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -1064,8 +1085,9 @@ var _ = Describe("MCPServer Controller - Health Probes", func() {
 		}()
 
 		controllerReconciler := &MCPServerReconciler{
-			Client: k8sClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    k8sClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 
 		_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -1100,8 +1122,9 @@ var _ = Describe("MCPServer Controller - Health Probes", func() {
 		}()
 
 		controllerReconciler := &MCPServerReconciler{
-			Client: k8sClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    k8sClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 
 		_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -1190,8 +1213,9 @@ var _ = Describe("MCPServer Controller - Health Probes", func() {
 		}()
 
 		controllerReconciler := &MCPServerReconciler{
-			Client: k8sClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    k8sClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 
 		_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -1232,8 +1256,9 @@ var _ = Describe("MCPServer Controller - Health Probes", func() {
 		}()
 
 		reconciler := &MCPServerReconciler{
-			Client: k8sClient,
-			Scheme: k8sClient.Scheme(),
+			Client:    k8sClient,
+			Scheme:    k8sClient.Scheme(),
+			APIReader: k8sClient,
 		}
 
 		deployment, err := reconciler.reconcileDeployment(ctx, mcpServer)

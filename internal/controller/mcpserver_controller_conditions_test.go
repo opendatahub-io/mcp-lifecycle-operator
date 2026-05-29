@@ -372,7 +372,7 @@ var _ = Describe("reconcileReadyCondition", func() {
 			Status: metav1.ConditionTrue,
 			Reason: ReasonValid,
 		}
-		reconciler = &MCPServerReconciler{Client: k8sClient}
+		reconciler = &MCPServerReconciler{Client: k8sClient, APIReader: k8sClient}
 	})
 
 	It("should return Initializing when deployment has no conditions and no ready replicas", func() {

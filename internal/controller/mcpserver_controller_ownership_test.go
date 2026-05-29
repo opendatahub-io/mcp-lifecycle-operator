@@ -70,8 +70,9 @@ var _ = Describe("MCPServer Controller - Owned Resource Cleanup", func() {
 
 		It("should set controller owner reference on created Deployment", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -96,8 +97,9 @@ var _ = Describe("MCPServer Controller - Owned Resource Cleanup", func() {
 
 		It("should set controller owner reference on created Service", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -122,8 +124,9 @@ var _ = Describe("MCPServer Controller - Owned Resource Cleanup", func() {
 
 		It("should preserve owner references across reconciliation updates", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			By("Reconciling to create initial resources")
@@ -228,8 +231,9 @@ var _ = Describe("MCPServer Controller - Foreign Owned Resources", func() {
 
 		It("should reject updating deployment when owned by another controller", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -309,8 +313,9 @@ var _ = Describe("MCPServer Controller - Foreign Owned Resources", func() {
 
 		It("should reject updating service when owned by another controller", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -387,8 +392,9 @@ var _ = Describe("MCPServer Controller - Foreign Owned Resources", func() {
 
 		It("should reject updating unowned deployment", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -466,8 +472,9 @@ var _ = Describe("MCPServer Controller - Foreign Owned Resources", func() {
 
 		It("should reject updating unowned service", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -564,8 +571,9 @@ var _ = Describe("MCPServer Controller - Foreign Owned Resources", func() {
 
 		It("should reject updating deployment with multiple non-controller owners", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -661,8 +669,9 @@ var _ = Describe("MCPServer Controller - Foreign Owned Resources", func() {
 
 		It("should reject updating service with multiple non-controller owners", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -725,8 +734,9 @@ var _ = Describe("MCPServer Controller - Foreign Owned Resources", func() {
 
 			By("Reconciling to create deployment")
 			reconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespacedName,
@@ -843,8 +853,9 @@ var _ = Describe("MCPServer Controller - Foreign Owned Resources", func() {
 
 			By("Reconciling to create service")
 			reconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespacedName,
@@ -942,8 +953,9 @@ var _ = Describe("MCPServer Controller - Foreign Owned Resources", func() {
 
 			By("Reconciling to create service")
 			reconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespacedName,
@@ -1025,8 +1037,9 @@ var _ = Describe("MCPServer Controller - Foreign Owned Resources", func() {
 
 			By("Reconciling to create deployment")
 			reconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespacedName,

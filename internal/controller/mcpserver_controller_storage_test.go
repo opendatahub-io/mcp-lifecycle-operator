@@ -95,8 +95,9 @@ var _ = Describe("MCPServer Controller - Storage Mounts", func() {
 
 		It("should create deployment with ConfigMap volume and mount", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -179,8 +180,9 @@ var _ = Describe("MCPServer Controller - Storage Mounts", func() {
 
 		It("should create deployment with Secret volume and mount", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -291,8 +293,9 @@ var _ = Describe("MCPServer Controller - Storage Mounts", func() {
 
 		It("should create deployment with multiple volumes and mounts with correct names", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -390,8 +393,9 @@ var _ = Describe("MCPServer Controller - Storage Mounts", func() {
 
 		It("should create deployment with readOnly set to false", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -451,8 +455,9 @@ var _ = Describe("MCPServer Controller - Storage Mounts", func() {
 
 		It("should create deployment with EmptyDir volume and mount", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -521,8 +526,9 @@ var _ = Describe("MCPServer Controller - Storage Mounts", func() {
 
 		It("should create deployment with EmptyDir volume with sizeLimit", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -608,8 +614,9 @@ var _ = Describe("MCPServer Controller - Storage Mounts", func() {
 
 		It("should create deployment with both ConfigMap and EmptyDir volumes", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -688,8 +695,9 @@ var _ = Describe("MCPServer Controller - Storage Mounts", func() {
 
 		It("should set Accepted=False with 'ConfigMap not found' message", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -745,8 +753,9 @@ var _ = Describe("MCPServer Controller - Storage Mounts", func() {
 
 		It("should set Accepted=False with 'Secret not found' message", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -806,8 +815,9 @@ var _ = Describe("MCPServer Controller - Storage Mounts", func() {
 
 		It("should succeed reconciliation even when ConfigMap doesn't exist", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -869,8 +879,9 @@ var _ = Describe("MCPServer Controller - Storage Mounts", func() {
 
 		It("should succeed reconciliation even when Secret doesn't exist", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -932,8 +943,9 @@ var _ = Describe("MCPServer Controller - Storage Mounts", func() {
 
 		It("should set Accepted=False when ConfigMap name is empty", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -989,8 +1001,9 @@ var _ = Describe("MCPServer Controller - Storage Mounts", func() {
 
 		It("should set Accepted=False when Secret name is empty", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -1022,8 +1035,9 @@ var _ = Describe("MCPServer Controller - Storage Mounts", func() {
 
 			fakeClient := fake.NewClientBuilder().WithScheme(scheme).Build()
 			reconciler := &MCPServerReconciler{
-				Client: fakeClient,
-				Scheme: scheme,
+				Client:    fakeClient,
+				Scheme:    scheme,
+				APIReader: k8sClient,
 			}
 
 			mcpServer := &mcpv1alpha1.MCPServer{
@@ -1062,8 +1076,9 @@ var _ = Describe("MCPServer Controller - Storage Mounts", func() {
 
 			fakeClient := fake.NewClientBuilder().WithScheme(scheme).Build()
 			reconciler := &MCPServerReconciler{
-				Client: fakeClient,
-				Scheme: scheme,
+				Client:    fakeClient,
+				Scheme:    scheme,
+				APIReader: k8sClient,
 			}
 
 			mcpServer := &mcpv1alpha1.MCPServer{
@@ -1102,8 +1117,9 @@ var _ = Describe("MCPServer Controller - Storage Mounts", func() {
 
 			fakeClient := fake.NewClientBuilder().WithScheme(scheme).Build()
 			reconciler := &MCPServerReconciler{
-				Client: fakeClient,
-				Scheme: scheme,
+				Client:    fakeClient,
+				Scheme:    scheme,
+				APIReader: k8sClient,
 			}
 
 			mcpServer := &mcpv1alpha1.MCPServer{
@@ -1145,8 +1161,9 @@ var _ = Describe("MCPServer Controller - Storage Mounts", func() {
 
 			fakeClient := fake.NewClientBuilder().WithScheme(scheme).Build()
 			reconciler := &MCPServerReconciler{
-				Client: fakeClient,
-				Scheme: scheme,
+				Client:    fakeClient,
+				Scheme:    scheme,
+				APIReader: k8sClient,
 			}
 
 			mcpServer := &mcpv1alpha1.MCPServer{
@@ -1188,8 +1205,9 @@ var _ = Describe("MCPServer Controller - Storage Mounts", func() {
 
 			fakeClient := fake.NewClientBuilder().WithScheme(scheme).Build()
 			reconciler := &MCPServerReconciler{
-				Client: fakeClient,
-				Scheme: scheme,
+				Client:    fakeClient,
+				Scheme:    scheme,
+				APIReader: k8sClient,
 			}
 
 			optional := true
@@ -1228,8 +1246,9 @@ var _ = Describe("MCPServer Controller - Storage Mounts", func() {
 
 			fakeClient := fake.NewClientBuilder().WithScheme(scheme).Build()
 			reconciler := &MCPServerReconciler{
-				Client: fakeClient,
-				Scheme: scheme,
+				Client:    fakeClient,
+				Scheme:    scheme,
+				APIReader: k8sClient,
 			}
 
 			optional := true
@@ -1268,8 +1287,9 @@ var _ = Describe("MCPServer Controller - Storage Mounts", func() {
 
 			fakeClient := fake.NewClientBuilder().WithScheme(scheme).Build()
 			reconciler := &MCPServerReconciler{
-				Client: fakeClient,
-				Scheme: scheme,
+				Client:    fakeClient,
+				Scheme:    scheme,
+				APIReader: k8sClient,
 			}
 
 			mcpServer := &mcpv1alpha1.MCPServer{
@@ -1318,8 +1338,9 @@ var _ = Describe("MCPServer Controller - Storage Mounts", func() {
 				}).Build()
 
 			reconciler := &MCPServerReconciler{
-				Client: fakeClient,
-				Scheme: scheme,
+				Client:    fakeClient,
+				Scheme:    scheme,
+				APIReader: k8sClient,
 			}
 
 			mcpServer := &mcpv1alpha1.MCPServer{
@@ -1379,8 +1400,9 @@ var _ = Describe("MCPServer Controller - Storage Mounts", func() {
 				}).Build()
 
 			reconciler := &MCPServerReconciler{
-				Client: fakeClient,
-				Scheme: scheme,
+				Client:    fakeClient,
+				Scheme:    scheme,
+				APIReader: k8sClient,
 			}
 
 			mcpServer := &mcpv1alpha1.MCPServer{
@@ -1437,8 +1459,9 @@ var _ = Describe("MCPServer Controller - Storage Mounts", func() {
 				}).Build()
 
 			reconciler := &MCPServerReconciler{
-				Client: fakeClient,
-				Scheme: scheme,
+				Client:    fakeClient,
+				Scheme:    scheme,
+				APIReader: k8sClient,
 			}
 
 			mcpServer := &mcpv1alpha1.MCPServer{
@@ -1493,8 +1516,9 @@ var _ = Describe("MCPServer Controller - Storage Mounts", func() {
 				}).Build()
 
 			reconciler := &MCPServerReconciler{
-				Client: fakeClient,
-				Scheme: scheme,
+				Client:    fakeClient,
+				Scheme:    scheme,
+				APIReader: k8sClient,
 			}
 
 			mcpServer := &mcpv1alpha1.MCPServer{
@@ -1553,8 +1577,9 @@ var _ = Describe("MCPServer Controller - Storage Mounts", func() {
 				}).Build()
 
 			reconciler := &MCPServerReconciler{
-				Client: fakeClient,
-				Scheme: scheme,
+				Client:    fakeClient,
+				Scheme:    scheme,
+				APIReader: k8sClient,
 			}
 
 			mcpServer := &mcpv1alpha1.MCPServer{
@@ -1613,8 +1638,9 @@ var _ = Describe("MCPServer Controller - Storage Mounts", func() {
 				}).Build()
 
 			reconciler := &MCPServerReconciler{
-				Client: fakeClient,
-				Scheme: scheme,
+				Client:    fakeClient,
+				Scheme:    scheme,
+				APIReader: k8sClient,
 			}
 
 			mcpServer := &mcpv1alpha1.MCPServer{
@@ -1673,8 +1699,9 @@ var _ = Describe("MCPServer Controller - Storage Mounts", func() {
 				}).Build()
 
 			reconciler := &MCPServerReconciler{
-				Client: fakeClient,
-				Scheme: scheme,
+				Client:    fakeClient,
+				Scheme:    scheme,
+				APIReader: k8sClient,
 			}
 
 			mcpServer := &mcpv1alpha1.MCPServer{

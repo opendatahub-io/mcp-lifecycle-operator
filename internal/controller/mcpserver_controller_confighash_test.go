@@ -69,8 +69,9 @@ var _ = Describe("MCPServer Controller - Config Hash", func() {
 
 		It("should not set config-hash annotation on deployment", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -145,8 +146,9 @@ var _ = Describe("MCPServer Controller - Config Hash", func() {
 
 		It("should set config-hash annotation on deployment", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -223,8 +225,9 @@ var _ = Describe("MCPServer Controller - Config Hash", func() {
 
 		It("should set config-hash annotation on deployment", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -297,8 +300,9 @@ var _ = Describe("MCPServer Controller - Config Hash", func() {
 
 		It("should update the config-hash annotation when ConfigMap data changes", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			// First reconcile
@@ -396,8 +400,9 @@ var _ = Describe("MCPServer Controller - Config Hash", func() {
 
 		It("should update the config-hash annotation when Secret data changes", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			// First reconcile
@@ -496,8 +501,9 @@ var _ = Describe("MCPServer Controller - Config Hash", func() {
 
 		It("should produce the same hash on consecutive reconciles with unchanged data", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			// First reconcile
@@ -539,8 +545,9 @@ var _ = Describe("MCPServer Controller - Config Hash", func() {
 			// config before reaching deployment creation, and a missing
 			// ConfigMap causes the MCPServer to be marked Invalid.
 			reconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			mcpServer := &mcpv1alpha1.MCPServer{
@@ -626,8 +633,9 @@ var _ = Describe("MCPServer Controller - Config Hash", func() {
 
 		It("should set config-hash annotation on deployment", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -723,8 +731,9 @@ var _ = Describe("MCPServer Controller - Config Hash", func() {
 
 		It("should set a single config-hash and update when ConfigMap changes", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -821,8 +830,9 @@ var _ = Describe("MCPServer Controller - Config Hash", func() {
 
 		It("should set config-hash and update when BinaryData changes", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -918,8 +928,9 @@ var _ = Describe("MCPServer Controller - Config Hash", func() {
 
 		It("should preserve external annotations when no spec changes occur", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			// Initial reconcile
@@ -1014,8 +1025,9 @@ var _ = Describe("MCPServer Controller - Config Hash", func() {
 
 		It("should remove the config-hash annotation when refs are removed", func() {
 			controllerReconciler := &MCPServerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				APIReader: k8sClient,
 			}
 
 			// Initial reconcile with refs
