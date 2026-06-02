@@ -701,4 +701,18 @@ var _ = Describe("status condition helpers", func() {
 			{Type: ConditionTypeReady, Status: metav1.ConditionFalse, Reason: ReasonDeploymentUnavailable, Message: msg},
 		}, msg)).To(BeTrue())
 	})
+
+	It("duplicateServiceUnavailable returns true only for matching Ready=False ServiceUnavailable message", func() {
+		msg := "Failed to reconcile Service: simulated failure"
+		Expect(duplicateServiceUnavailable(nil, msg)).To(BeFalse())
+		Expect(duplicateServiceUnavailable([]metav1.Condition{
+			{Type: ConditionTypeReady, Status: metav1.ConditionFalse, Reason: ReasonDeploymentUnavailable, Message: msg},
+		}, msg)).To(BeFalse())
+		Expect(duplicateServiceUnavailable([]metav1.Condition{
+			{Type: ConditionTypeReady, Status: metav1.ConditionFalse, Reason: ReasonServiceUnavailable, Message: "other"},
+		}, msg)).To(BeFalse())
+		Expect(duplicateServiceUnavailable([]metav1.Condition{
+			{Type: ConditionTypeReady, Status: metav1.ConditionFalse, Reason: ReasonServiceUnavailable, Message: msg},
+		}, msg)).To(BeTrue())
+	})
 })
