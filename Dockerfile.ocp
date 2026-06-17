@@ -30,10 +30,9 @@ LABEL io.k8s.display-name="MCP lifecycle operator"
 LABEL io.openshift.tags="openshift,mcp,operator"
 LABEL name="mcp-lifecycle-operator-beta/mcp-lifecycle-rhel9-operator"
 LABEL release=0.1.0
-LABEL url="https://github.com/openshift/mcp-lifecycle-operator"
+LABEL url="https://github.com/opendatahub-io/mcp-lifecycle-operator"
 LABEL vendor="Red Hat, Inc."
 LABEL version=0.1.0
 LABEL summary="MCP lifecycle operator"
-LABEL konflux.additional-tags="latest"
 
 ENTRYPOINT ["/manager"]
