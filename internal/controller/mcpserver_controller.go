@@ -115,6 +115,8 @@ const (
 	eventActionMCPHandshakeRetriesExhausted = "MCPHandshakeRetriesExhausted"
 	// eventActionDeploymentReconcileFailed is the reporting action when Deployment reconciliation fails.
 	eventActionDeploymentReconcileFailed = "DeploymentReconcileFailed"
+	// eventActionServiceReconcileFailed is the reporting action when Service reconciliation fails.
+	eventActionServiceReconcileFailed = "ServiceReconcileFailed"
 
 	// requeueDelayMCPHandshake is the initial delay before requeuing when an MCP handshake fails.
 	requeueDelayMCPHandshake = 10 * time.Second
@@ -157,11 +159,10 @@ type MCPServerReconciler struct {
 	APIReader client.Reader
 }
 
-// +kubebuilder:rbac:groups=mcp.x-k8s.io,resources=mcpservers,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=mcp.x-k8s.io,resources=mcpservers/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=mcp.x-k8s.io,resources=mcpservers/finalizers,verbs=update
-// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=mcp.x-k8s.io,resources=mcpservers,verbs=get;list;watch
+// +kubebuilder:rbac:groups=mcp.x-k8s.io,resources=mcpservers/status,verbs=get;patch
+// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update
+// +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update
 // +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=pods,verbs=get;list
@@ -294,6 +295,10 @@ func (r *MCPServerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 		recordCondition(mcpServer.Name, mcpServer.Namespace,
 			readyCondition.Type, string(readyCondition.Status), readyCondition.Reason)
+
+		if !duplicateServiceUnavailable(mcpServer.Status.Conditions, readyCondition.Message) {
+			r.emitServiceReconcileFailed(mcpServer, readyCondition.Message)
+		}
 
 		status := acv1alpha1.MCPServerStatus().
 			WithObservedGeneration(mcpServer.Generation).
@@ -515,6 +520,14 @@ func (r *MCPServerReconciler) emitDeploymentReconcileFailed(mcpServer *mcpv1alph
 		return
 	}
 	r.Recorder.Eventf(mcpServer, nil, corev1.EventTypeWarning, ReasonDeploymentUnavailable, eventActionDeploymentReconcileFailed,
+		"MCPServer %s: %s", mcpServer.Name, message)
+}
+
+func (r *MCPServerReconciler) emitServiceReconcileFailed(mcpServer *mcpv1alpha1.MCPServer, message string) {
+	if r.Recorder == nil {
+		return
+	}
+	r.Recorder.Eventf(mcpServer, nil, corev1.EventTypeWarning, ReasonServiceUnavailable, eventActionServiceReconcileFailed,
 		"MCPServer %s: %s", mcpServer.Name, message)
 }
 

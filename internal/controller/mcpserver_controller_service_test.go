@@ -19,6 +19,8 @@ package controller
 import (
 	"context"
 	"fmt"
+	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -578,6 +580,100 @@ var _ = Describe("MCPServer Controller - Service Reconciliation Failures", func(
 		Expect(readyCondition.Message).To(ContainSubstring("simulated service update failure"))
 
 		Expect(mcpServer.Status.DeploymentName).To(Equal(resourceName))
+	})
+})
+
+var _ = Describe("MCPServer Controller - Service Reconcile Events", func() {
+	const resourceName = "test-service-events"
+
+	ctx := context.Background()
+
+	typeNamespacedName := types.NamespacedName{
+		Name:      resourceName,
+		Namespace: "default",
+	}
+
+	BeforeEach(func() {
+		resource := newTestMCPServer(resourceName)
+		Expect(k8sClient.Create(ctx, resource)).To(Succeed())
+	})
+
+	AfterEach(func() {
+		resource := &mcpv1alpha1.MCPServer{}
+		err := k8sClient.Get(ctx, typeNamespacedName, resource)
+		if err == nil {
+			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
+		}
+	})
+
+	It("should emit a Warning ServiceReconcileFailed event only when service error message changes", func() {
+		failMsg := "simulated service creation failure"
+		reconciler, fr := newReconcilerForTestWithFakeEvents(k8sClient, k8sClient.Scheme())
+
+		wrappedClient, err := client.NewWithWatch(cfg, client.Options{Scheme: k8sClient.Scheme()})
+		Expect(err).NotTo(HaveOccurred())
+
+		interceptedClient := interceptor.NewClient(wrappedClient, interceptor.Funcs{
+			Create: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
+				if _, ok := obj.(*corev1.Service); ok {
+					return fmt.Errorf("%s", failMsg)
+				}
+				return c.Create(ctx, obj, opts...)
+			},
+		})
+		reconciler.Client = interceptedClient
+
+		By("First service reconcile failure — Warning event emitted once")
+		_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
+		Expect(err).To(HaveOccurred())
+
+		var serviceFailedEvent string
+		Eventually(func(g Gomega) {
+			for _, ev := range drainEvents(fr.Events) {
+				if strings.Contains(ev, corev1.EventTypeWarning) && strings.Contains(ev, ReasonServiceUnavailable) {
+					serviceFailedEvent = ev
+					break
+				}
+			}
+			g.Expect(serviceFailedEvent).NotTo(BeEmpty())
+			g.Expect(serviceFailedEvent).To(ContainSubstring(resourceName))
+			g.Expect(serviceFailedEvent).To(ContainSubstring("Failed to reconcile Service"))
+			g.Expect(serviceFailedEvent).To(ContainSubstring(failMsg))
+		}).Should(Succeed())
+
+		By("Second reconcile with same error — no duplicate service failed event")
+		_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
+		Expect(err).To(HaveOccurred())
+		Consistently(fr.Events, 300*time.Millisecond, 20*time.Millisecond).ShouldNot(Receive())
+
+		By("Change error message — second Warning event emitted")
+		failMsg = "simulated service ownership failure"
+		interceptedClient = interceptor.NewClient(wrappedClient, interceptor.Funcs{
+			Create: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
+				if _, ok := obj.(*corev1.Service); ok {
+					return fmt.Errorf("%s", failMsg)
+				}
+				return c.Create(ctx, obj, opts...)
+			},
+		})
+		reconciler.Client = interceptedClient
+
+		_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
+		Expect(err).To(HaveOccurred())
+
+		var secondServiceFailedEvent string
+		Eventually(func(g Gomega) {
+			for _, ev := range drainEvents(fr.Events) {
+				if strings.Contains(ev, corev1.EventTypeWarning) && strings.Contains(ev, ReasonServiceUnavailable) {
+					secondServiceFailedEvent = ev
+					break
+				}
+			}
+			g.Expect(secondServiceFailedEvent).NotTo(BeEmpty())
+			g.Expect(secondServiceFailedEvent).To(ContainSubstring(resourceName))
+			g.Expect(secondServiceFailedEvent).To(ContainSubstring(failMsg))
+			g.Expect(secondServiceFailedEvent).NotTo(Equal(serviceFailedEvent))
+		}).Should(Succeed())
 	})
 })
 
