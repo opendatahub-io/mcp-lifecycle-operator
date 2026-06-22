@@ -10,6 +10,10 @@
   "recreateWhen": "always",
   "commitMessageSuffix": "{{baseBranch}}",
   "ignorePaths": ["Dockerfile", "/docs/**"],
+  "postUpdateOptions": [
+    "gomodTidy",
+    "gomodUpdateImportPaths"
+  ],
   "packageRules": [
     {
       "matchManagers": ["tekton"],
@@ -24,11 +28,24 @@
       "matchFileNames": ["Dockerfile.ci", "Dockerfile.ocp"],
       "automerge": true,
       "addLabels": ["jira/valid-reference", "lgtm", "approved"]
+    },
+    {
+      "matchManagers": ["gomod"],
+      "matchUpdateTypes": ["patch", "pin", "digest"],
+      "groupName": "k8s.io dependencies",
+      "matchPackageNames": ["k8s.io/{/,}**"]
+    },
+    {
+      "matchManagers": ["gomod"],
+      "matchUpdateTypes": ["patch", "pin", "digest"],
+      "groupName": "sigs.k8s.io dependencies",
+      "matchPackageNames": ["sigs.k8s.io/{/,}**"]
+    },
+    {
+      "matchManagers": ["gomod"],
+      "matchDepNames": ["go"]
     }
   ],
-  "gomod": {
-    "enabled": false
-  },
   "vulnerabilityAlerts": {
     "enabled": true
   }
