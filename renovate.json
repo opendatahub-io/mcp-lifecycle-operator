@@ -8,19 +8,21 @@
   "rebaseLabel": "needs-rebase",
   "rebaseWhen": "behind-base-branch",
   "recreateWhen": "always",
-  "commitMessageSuffix": "{{baseBranch}}",
+  "commitMessagePrefix": "[{{baseBranch}}]",
+  "enabledManagers": ["tekton", "gomod", "dockerfile"],
   "ignorePaths": ["Dockerfile", "/docs/**"],
   "postUpdateOptions": [
     "gomodTidy",
-    "gomodUpdateImportPaths"
+    "gomodUpdateImportPaths",
+    "gomodVendor"
   ],
   "packageRules": [
     {
       "matchManagers": ["tekton"],
       "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
-      "groupName": "all minor dependencies",
+      "groupName": "tekton dependencies",
       "automerge": true,
-      "description": "Group all minor dependencies",
+      "description": "Group all minor tekton dependencies",
       "addLabels": ["jira/valid-reference", "lgtm", "approved"]
     },
     {
@@ -43,7 +45,8 @@
     },
     {
       "matchManagers": ["gomod"],
-      "matchDepNames": ["go"]
+      "matchDepTypes": ["indirect"],
+      "enabled": false
     }
   ],
   "vulnerabilityAlerts": {
