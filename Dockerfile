@@ -2,7 +2,7 @@
 # https://github.com/kubernetes-sigs/kubebuilder/blob/v4.11.1/pkg/plugins/golang/v4/scaffolds/internal/templates/dockerfile.go
 
 # Build the manager binary
-FROM --platform=${BUILDPLATFORM} golang:1.26.4 AS builder
+FROM --platform=${BUILDPLATFORM} golang:1.26.3 AS builder
 ARG TARGETOS
 ARG TARGETARCH
 
@@ -40,7 +40,7 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -gcflags
 
 # Debug image with Delve
 FROM golang:1.26.3 AS debug
-RUN go install github.com/go-delve/delve/cmd/dlv@latest
+RUN go install github.com/go-delve/delve/cmd/dlv@v1.26.3
 WORKDIR /
 COPY --from=debug-builder /workspace/manager .
 USER 65532:65532
