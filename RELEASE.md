@@ -1,9 +1,23 @@
 # Release Process
 
-The Kubernetes Template Project is released on an as-needed basis. The process is as follows:
+The MCP Lifecycle Operator is released on an as-needed basis. The process is as follows:
 
-1. An issue is proposing a new release with a changelog since the last release
-1. All [OWNERS](OWNERS) must LGTM this release
-1. An OWNER runs `git tag -s $VERSION` and inserts the changelog and pushes the tag with `git push $VERSION`
-1. The release issue is closed
-1. An announcement email is sent to `dev@kubernetes.io` with the subject `[ANNOUNCE] kubernetes-template-project $VERSION is released`
+## Issue Templates
+
+Two GitHub issue templates are provided under [`.github/ISSUE_TEMPLATE/`](.github/ISSUE_TEMPLATE/):
+
+- [**new-release.md**](.github/ISSUE_TEMPLATE/new-release.md) - for major/minor releases (creates a release branch, runs
+  the full checklist)
+- [**new-patch-release.md**](.github/ISSUE_TEMPLATE/new-patch-release.md) - for patch releases (cherry-picks to an existing
+  release branch)
+
+See `docs/release-v0.1.0-issue.md` for a concrete example of a completed
+release issue.
+
+## Process
+
+Open a release issue using the appropriate template above. The template
+contains the complete step-by-step checklist for the release, including branch
+management, CI verification, image promotion, and artifact generation.
+
+All [OWNERS](OWNERS) must LGTM the release proposal before proceeding.
