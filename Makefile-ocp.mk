@@ -1,5 +1,6 @@
 # Override the IMAGE_TAG_BASE from the upstream repo
-IMAGE_TAG_BASE ?= quay.io/redhat-user-workloads/mcp-lifecycle-operator-tenant/mcp-lifecycle-operator-main
+IMAGE_TAG_BASE ?= quay.io/opendatahub/odh-mcp-lifecycle-module-operator
+IMAGE_TAG ?= odh-stable
 
 include Makefile
 
