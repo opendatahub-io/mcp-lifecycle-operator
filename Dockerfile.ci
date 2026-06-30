@@ -1,0 +1,27 @@
+ARG BUILDER_IMAGE=registry.ci.openshift.org/ocp/builder:rhel-9-golang-1.26-openshift-5.0
+ARG BASE_IMAGE=registry.ci.openshift.org/ocp/5.0:base-rhel9
+
+FROM ${BUILDER_IMAGE} AS builder
+ARG TARGETOS
+ARG TARGETARCH
+
+USER 0
+WORKDIR /workspace
+COPY . .
+
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -mod=vendor -a -o manager ./cmd
+
+FROM ${BASE_IMAGE}
+WORKDIR /
+COPY --from=builder /workspace/manager .
+USER 65532:65532
+
+LABEL com.redhat.component=mcp-lifecycle-operator
+LABEL description="MCP Lifecycle Operator"
+LABEL io.k8s.description="MCP Lifecycle Operator"
+LABEL io.k8s.display-name="MCP Lifecycle Operator"
+LABEL io.openshift.tags="openshift,mcp,operator"
+LABEL name=mcp-lifecycle-operator
+LABEL summary="MCP Lifecycle Operator"
+
+ENTRYPOINT ["/manager"]
