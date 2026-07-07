@@ -124,13 +124,34 @@ func WaitForPodPhase(ctx context.Context, t *testing.T, cfg *envconf.Config,
 	}
 }
 
+// ProxyOption configures optional parameters for ServiceProxyHTTPClient.
+type ProxyOption func(*proxyOptions)
+
+type proxyOptions struct {
+	scheme string
+}
+
+// WithScheme sets the service scheme used in the API server proxy URL.
+// Defaults to "http".
+func WithScheme(scheme string) ProxyOption {
+	return func(o *proxyOptions) {
+		o.scheme = scheme
+	}
+}
+
 // ServiceProxyHTTPClient returns an *http.Client and the full proxy URL for accessing
 // a ClusterIP service via the Kubernetes API server proxy.
 // The returned client is authenticated for the API server; the URL routes through
 // /api/v1/namespaces/{ns}/services/{scheme}:{name}:{port}/proxy/{path}.
 func ServiceProxyHTTPClient(t *testing.T, cfg *envconf.Config,
-	namespace, serviceName string, port int, path string) (*http.Client, string) {
+	namespace, serviceName string, port int, path string, opts ...ProxyOption) (*http.Client, string) {
 	t.Helper()
+
+	o := proxyOptions{scheme: "http"}
+	for _, fn := range opts {
+		fn(&o)
+	}
+
 	restCfg := cfg.Client().Resources().GetConfig()
 
 	httpClient, err := rest.HTTPClientFor(restCfg)
@@ -143,7 +164,7 @@ func ServiceProxyHTTPClient(t *testing.T, cfg *envconf.Config,
 		t.Fatalf("failed to parse REST config host %q: %v", restCfg.Host, err)
 	}
 	base.Path = netpath.Join(base.Path,
-		fmt.Sprintf("api/v1/namespaces/%s/services/http:%s:%d/proxy", namespace, serviceName, port),
+		fmt.Sprintf("api/v1/namespaces/%s/services/%s:%s:%d/proxy", namespace, o.scheme, serviceName, port),
 		netpath.Clean("/"+path),
 	)
 	return httpClient, base.String()
