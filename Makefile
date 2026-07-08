@@ -13,6 +13,10 @@ GIT_IMAGE_TAG = v$(shell date +%Y%m%d)-$(shell git describe --always --dirty)
 # Image URL to use all building/pushing image targets
 IMG ?= $(IMAGE_TAG_BASE):$(IMAGE_TAG)
 
+# E2E test container image.
+IMAGE_TAG_BASE_E2E ?= $(IMAGE_TAG_BASE)/e2e
+IMG_E2E ?= $(IMAGE_TAG_BASE_E2E):$(IMAGE_TAG)
+
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
 GOBIN=$(shell go env GOPATH)/bin
@@ -206,6 +210,10 @@ docker-buildx: ## Build and push docker image for the manager for cross-platform
 	$(CONTAINER_TOOL) buildx use mcp-lifecycle-operator-builder
 	$(CONTAINER_TOOL) buildx build --push --target production --platform=$(PLATFORMS) --tag ${IMG} $(foreach tag,$(EXTRA_TAGS),-t $(IMAGE_TAG_BASE):$(tag)) .
 	- $(CONTAINER_TOOL) buildx rm mcp-lifecycle-operator-builder
+
+.PHONY: image-e2e
+image-e2e: ## Build e2e test container image locally.
+	$(CONTAINER_TOOL) build -f test/e2e/Dockerfile -t $(IMG_E2E) .
 
 .PHONY: build-installer
 build-installer: manifests generate kustomize ## Generate a consolidated YAML with CRDs and deployment.

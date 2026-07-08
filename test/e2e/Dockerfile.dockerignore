@@ -1,0 +1,15 @@
+# E2e test image needs test files -- override the root .dockerignore
+# which excludes *_test.go and test/ directory.
+**
+
+# Go source (including test files)
+!**/*.go
+
+# Go modules
+!go.mod
+!go.sum
+
+# Source directories needed for compilation
+!api/
+!internal/
+!test/
