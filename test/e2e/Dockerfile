@@ -15,6 +15,8 @@ COPY internal/ internal/
 COPY test/ test/
 
 ENV GOEXPERIMENT=strictfipsruntime
+# NB: go test -c compiles exactly one package into one binary. If e2e tests
+# are split into subpackages, each needs a separate go test -c invocation.
 RUN CGO_ENABLED=1 GOEXPERIMENT=strictfipsruntime \
     GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
     go test -c -race -tags=e2e -o /e2e-tests ./test/e2e/
