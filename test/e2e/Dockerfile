@@ -49,5 +49,8 @@ LABEL io.openshift.tags="openshift,mcp,operator,e2e"
 LABEL name="mcp-lifecycle-operator-beta/mcp-lifecycle-operator-e2e-rhel9"
 LABEL summary="MCP lifecycle operator e2e tests"
 
+# Runs all e2e tests by default. To run specific tests, pass -test.run flag:
+#   podman run <image> -test.run TestMCPServerCreation
+#   podman run <image> -test.run "TestMCPServer.*"
 ENTRYPOINT ["/e2e/e2e-run"]
-CMD ["./..."]
+CMD []
