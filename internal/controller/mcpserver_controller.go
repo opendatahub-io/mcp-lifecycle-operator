@@ -161,6 +161,9 @@ type MCPServerReconciler struct {
 	Recorder  events.EventRecorder
 	MCPDialer func(ctx context.Context, url string) (*mcpv1alpha1.MCPServerInfo, error) // nil = use real MCP handshake
 	APIReader client.Reader
+	// TLSEnvVars holds TLS-related environment variables to propagate to every
+	// MCP server container. Populated at startup when PROPAGATE_TLS_ENV_VARS is set.
+	TLSEnvVars []corev1.EnvVar
 }
 
 // +kubebuilder:rbac:groups=mcp.x-k8s.io,resources=mcpservers,verbs=get;list;watch;update;patch

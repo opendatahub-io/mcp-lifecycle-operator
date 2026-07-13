@@ -170,6 +170,16 @@ func deploymentNeedsUpdate(mcpServer *mcpv1alpha1.MCPServer, existing, desired *
 		ownershipChanged
 }
 
+// tlsEnvVarOverridden reports whether name matches any operator-propagated TLS env var.
+func tlsEnvVarOverridden(name string, tlsVars []corev1.EnvVar) bool {
+	for _, v := range tlsVars {
+		if v.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
 func managedWorkloadLabels(mcpServerName string) map[string]string {
 	return map[string]string{
 		LabelKeyApp:       ManagedWorkloadName,
@@ -219,9 +229,17 @@ func (r *MCPServerReconciler) createDeployment(mcpServer *mcpv1alpha1.MCPServer)
 		container.Args = mcpServer.Spec.Config.Arguments
 	}
 
-	// Add env vars if specified
-	if len(mcpServer.Spec.Config.Env) > 0 {
-		container.Env = mcpServer.Spec.Config.Env
+	// Add env vars: user-specified first (filtering out any that collide with
+	// operator-propagated TLS vars), then the operator TLS vars.
+	if len(r.TLSEnvVars) > 0 || len(mcpServer.Spec.Config.Env) > 0 {
+		env := make([]corev1.EnvVar, 0, len(mcpServer.Spec.Config.Env)+len(r.TLSEnvVars))
+		for _, e := range mcpServer.Spec.Config.Env {
+			if !tlsEnvVarOverridden(e.Name, r.TLSEnvVars) {
+				env = append(env, e)
+			}
+		}
+		env = append(env, r.TLSEnvVars...)
+		container.Env = env
 	}
 	if len(mcpServer.Spec.Config.EnvFrom) > 0 {
 		container.EnvFrom = mcpServer.Spec.Config.EnvFrom

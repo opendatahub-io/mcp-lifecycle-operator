@@ -23,6 +23,7 @@ import (
 	"crypto/tls"
 	"flag"
 	"os"
+	"strings"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -103,7 +104,8 @@ func main() {
 		tlsOpts = append(tlsOpts, disableHTTP2)
 	}
 
-	if tlsProfile := tlsConfigFromEnv(); tlsProfile != nil {
+	tlsCfg := parseTLSSettings()
+	if tlsProfile := tlsCfg.tlsConfigFunc(); tlsProfile != nil {
 		tlsOpts = append(tlsOpts, tlsProfile)
 	}
 
@@ -183,12 +185,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := (&controller.MCPServerReconciler{
+	reconciler := &controller.MCPServerReconciler{
 		Client:    mgr.GetClient(),
 		Scheme:    mgr.GetScheme(),
 		Recorder:  mgr.GetEventRecorder("mcpserver-controller"),
 		APIReader: mgr.GetAPIReader(),
-	}).SetupWithManager(mgr); err != nil {
+	}
+	if strings.EqualFold(os.Getenv("PROPAGATE_TLS_ENV_VARS"), "true") {
+		reconciler.TLSEnvVars = tlsCfg.envVars()
+		setupLog.Info("Propagating TLS environment variables to MCP server containers",
+			"count", len(reconciler.TLSEnvVars))
+	}
+	if err := reconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "MCPServer")
 		os.Exit(1)
 	}

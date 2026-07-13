@@ -1387,6 +1387,84 @@ var _ = Describe("MCPServer Controller - Health Probes", func() {
 	})
 })
 
+var _ = Describe("MCPServer Controller - TLS Env Var Propagation", func() {
+	It("should append TLSEnvVars after user-specified env", func() {
+		mcpServer := newTestMCPServer("test-tls-propagate")
+		mcpServer.Spec.Config.Env = []corev1.EnvVar{
+			{Name: "APP_VAR", Value: "app-value"},
+		}
+
+		reconciler := newReconcilerForTest(k8sClient, k8sClient.Scheme())
+		reconciler.TLSEnvVars = []corev1.EnvVar{
+			{Name: "TLS_MIN_VERSION", Value: "VersionTLS12"},
+			{Name: "TLS_CIPHER_SUITES", Value: "TLS_AES_128_GCM_SHA256"},
+		}
+
+		deployment, err := reconciler.createDeployment(mcpServer)
+		Expect(err).NotTo(HaveOccurred())
+
+		env := deployment.Spec.Template.Spec.Containers[0].Env
+		Expect(env).To(HaveLen(3))
+		Expect(env[0].Name).To(Equal("APP_VAR"))
+		Expect(env[0].Value).To(Equal("app-value"))
+		Expect(env[1].Name).To(Equal("TLS_MIN_VERSION"))
+		Expect(env[1].Value).To(Equal("VersionTLS12"))
+		Expect(env[2].Name).To(Equal("TLS_CIPHER_SUITES"))
+		Expect(env[2].Value).To(Equal("TLS_AES_128_GCM_SHA256"))
+	})
+
+	It("should filter out user-specified duplicates in favour of operator TLS vars", func() {
+		mcpServer := newTestMCPServer("test-tls-override")
+		mcpServer.Spec.Config.Env = []corev1.EnvVar{
+			{Name: "APP_VAR", Value: "keep-me"},
+			{Name: "TLS_MIN_VERSION", Value: "VersionTLS13"},
+		}
+
+		reconciler := newReconcilerForTest(k8sClient, k8sClient.Scheme())
+		reconciler.TLSEnvVars = []corev1.EnvVar{
+			{Name: "TLS_MIN_VERSION", Value: "VersionTLS12"},
+		}
+
+		deployment, err := reconciler.createDeployment(mcpServer)
+		Expect(err).NotTo(HaveOccurred())
+
+		env := deployment.Spec.Template.Spec.Containers[0].Env
+		Expect(env).To(HaveLen(2))
+		Expect(env[0].Name).To(Equal("APP_VAR"))
+		Expect(env[0].Value).To(Equal("keep-me"))
+		Expect(env[1].Name).To(Equal("TLS_MIN_VERSION"))
+		Expect(env[1].Value).To(Equal("VersionTLS12"))
+	})
+
+	It("should not add env vars when TLSEnvVars is empty", func() {
+		mcpServer := newTestMCPServer("test-tls-empty")
+
+		reconciler := newReconcilerForTest(k8sClient, k8sClient.Scheme())
+
+		deployment, err := reconciler.createDeployment(mcpServer)
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(deployment.Spec.Template.Spec.Containers[0].Env).To(BeEmpty())
+	})
+
+	It("should set only TLS vars when user specifies no env", func() {
+		mcpServer := newTestMCPServer("test-tls-only")
+
+		reconciler := newReconcilerForTest(k8sClient, k8sClient.Scheme())
+		reconciler.TLSEnvVars = []corev1.EnvVar{
+			{Name: "TLS_MIN_VERSION", Value: "VersionTLS12"},
+		}
+
+		deployment, err := reconciler.createDeployment(mcpServer)
+		Expect(err).NotTo(HaveOccurred())
+
+		env := deployment.Spec.Template.Spec.Containers[0].Env
+		Expect(env).To(HaveLen(1))
+		Expect(env[0].Name).To(Equal("TLS_MIN_VERSION"))
+		Expect(env[0].Value).To(Equal("VersionTLS12"))
+	})
+})
+
 var _ = Describe("MCPServer Controller - Deployment Reconcile Events", func() {
 	const resourceName = "test-deployment-events"
 

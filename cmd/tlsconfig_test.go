@@ -35,58 +35,75 @@ func TestParseCipherSuites(t *testing.T) {
 	log := noopLogger{}
 
 	t.Run("known IANA names", func(t *testing.T) {
-		suites := parseCipherSuites("TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384", log)
-		if len(suites) != 2 {
-			t.Fatalf("expected 2 suites, got %d", len(suites))
+		ids, names := parseCipherSuites("TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384", log)
+		if len(ids) != 2 {
+			t.Fatalf("expected 2 suites, got %d", len(ids))
 		}
-		if suites[0] != tls.TLS_AES_128_GCM_SHA256 {
-			t.Errorf("suites[0] = %#x, want %#x", suites[0], tls.TLS_AES_128_GCM_SHA256)
+		if ids[0] != tls.TLS_AES_128_GCM_SHA256 {
+			t.Errorf("ids[0] = %#x, want %#x", ids[0], tls.TLS_AES_128_GCM_SHA256)
 		}
-		if suites[1] != tls.TLS_AES_256_GCM_SHA384 {
-			t.Errorf("suites[1] = %#x, want %#x", suites[1], tls.TLS_AES_256_GCM_SHA384)
+		if ids[1] != tls.TLS_AES_256_GCM_SHA384 {
+			t.Errorf("ids[1] = %#x, want %#x", ids[1], tls.TLS_AES_256_GCM_SHA384)
+		}
+		if len(names) != 2 || names[0] != "TLS_AES_128_GCM_SHA256" || names[1] != "TLS_AES_256_GCM_SHA384" {
+			t.Errorf("names = %v, want [TLS_AES_128_GCM_SHA256 TLS_AES_256_GCM_SHA384]", names)
 		}
 	})
 
 	t.Run("empty input", func(t *testing.T) {
-		suites := parseCipherSuites("", log)
-		if suites != nil {
-			t.Errorf("expected nil, got %v", suites)
+		ids, names := parseCipherSuites("", log)
+		if ids != nil {
+			t.Errorf("expected nil ids, got %v", ids)
+		}
+		if names != nil {
+			t.Errorf("expected nil names, got %v", names)
 		}
 	})
 
 	t.Run("unknown names are skipped", func(t *testing.T) {
-		suites := parseCipherSuites("TLS_AES_128_GCM_SHA256,UNKNOWN_CIPHER", log)
-		if len(suites) != 1 {
-			t.Fatalf("expected 1 suite, got %d", len(suites))
+		ids, names := parseCipherSuites("TLS_AES_256_GCM_SHA384,UNKNOWN_CIPHER", log)
+		if len(ids) != 1 {
+			t.Fatalf("expected 1 suite, got %d", len(ids))
+		}
+		if len(names) != 1 || names[0] != "TLS_AES_256_GCM_SHA384" {
+			t.Errorf("names = %v, want [TLS_AES_256_GCM_SHA384]", names)
 		}
 	})
 
 	t.Run("TLS 1.2 ECDHE cipher", func(t *testing.T) {
-		suites := parseCipherSuites("TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256", log)
-		if len(suites) != 1 {
-			t.Fatalf("expected 1 suite, got %d", len(suites))
+		ids, names := parseCipherSuites("TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256", log)
+		if len(ids) != 1 {
+			t.Fatalf("expected 1 suite, got %d", len(ids))
 		}
-		if suites[0] != tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256 {
-			t.Errorf("suites[0] = %#x, want %#x", suites[0], tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256)
+		if ids[0] != tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256 {
+			t.Errorf("ids[0] = %#x, want %#x", ids[0], tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256)
+		}
+		if names[0] != "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256" {
+			t.Errorf("names[0] = %s, want TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256", names[0])
 		}
 	})
 }
 
-func TestTlsConfigFromEnv_Unset(t *testing.T) {
-	t.Setenv("TLS_MIN_VERSION", "")
-	t.Setenv("TLS_CIPHER_SUITES", "")
+func TestParseTLSSettings_Unset(t *testing.T) {
+	t.Setenv(envTLSMinVersion, "")
+	t.Setenv(envTLSCipherSuites, "")
 
-	result := tlsConfigFromEnv()
-	if result != nil {
-		t.Error("expected nil when env vars are unset")
+	s := parseTLSSettings()
+	if fn := s.tlsConfigFunc(); fn != nil {
+		t.Error("expected nil tlsConfigFunc when env vars are unset")
+	}
+	if envVars := s.envVars(); envVars != nil {
+		t.Errorf("expected nil envVars when env vars are unset, got %v", envVars)
 	}
 }
 
-func TestTlsConfigFromEnv_AppliesConfig(t *testing.T) {
-	t.Setenv("TLS_MIN_VERSION", "VersionTLS12")
-	t.Setenv("TLS_CIPHER_SUITES", "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256")
+func TestParseTLSSettings_AppliesConfig(t *testing.T) {
+	t.Setenv(envTLSMinVersion, "VersionTLS12")
+	t.Setenv(envTLSCipherSuites, "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256")
 
-	fn := tlsConfigFromEnv()
+	s := parseTLSSettings()
+
+	fn := s.tlsConfigFunc()
 	if fn == nil {
 		t.Fatal("expected non-nil TLS config function")
 	}
@@ -102,11 +119,88 @@ func TestTlsConfigFromEnv_AppliesConfig(t *testing.T) {
 	}
 }
 
-func TestTlsConfigFromEnv_TLS13_SkipsCipherSuites(t *testing.T) {
-	t.Setenv("TLS_MIN_VERSION", "VersionTLS13")
-	t.Setenv("TLS_CIPHER_SUITES", "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384")
+func TestTLSSettings_EnvVars(t *testing.T) {
+	t.Setenv(envTLSMinVersion, "")
+	t.Setenv(envTLSCipherSuites, "")
 
-	fn := tlsConfigFromEnv()
+	t.Run("returns both vars when both are valid", func(t *testing.T) {
+		t.Setenv(envTLSMinVersion, "VersionTLS12")
+		t.Setenv(envTLSCipherSuites, "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384")
+
+		s := parseTLSSettings()
+		envVars := s.envVars()
+		if len(envVars) != 2 {
+			t.Fatalf("expected 2 env vars, got %d", len(envVars))
+		}
+		if envVars[0].Name != envTLSMinVersion || envVars[0].Value != "VersionTLS12" {
+			t.Errorf("envVars[0] = %s=%s, want TLS_MIN_VERSION=VersionTLS12", envVars[0].Name, envVars[0].Value)
+		}
+		if envVars[1].Name != envTLSCipherSuites || envVars[1].Value != "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384" {
+			t.Errorf("envVars[1] = %s=%s, want TLS_CIPHER_SUITES=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384", envVars[1].Name, envVars[1].Value)
+		}
+	})
+
+	t.Run("returns only valid vars", func(t *testing.T) {
+		t.Setenv(envTLSMinVersion, "VersionTLS13")
+
+		s := parseTLSSettings()
+		envVars := s.envVars()
+		if len(envVars) != 1 {
+			t.Fatalf("expected 1 env var, got %d", len(envVars))
+		}
+		if envVars[0].Name != envTLSMinVersion || envVars[0].Value != "VersionTLS13" {
+			t.Errorf("envVars[0] = %s=%s, want TLS_MIN_VERSION=VersionTLS13", envVars[0].Name, envVars[0].Value)
+		}
+	})
+
+	t.Run("returns nil when neither var is set", func(t *testing.T) {
+		s := parseTLSSettings()
+		envVars := s.envVars()
+		if envVars != nil {
+			t.Errorf("expected nil, got %v", envVars)
+		}
+	})
+
+	t.Run("excludes invalid min version", func(t *testing.T) {
+		t.Setenv(envTLSMinVersion, "garbage")
+
+		s := parseTLSSettings()
+		envVars := s.envVars()
+		if envVars != nil {
+			t.Errorf("expected nil for invalid min version, got %v", envVars)
+		}
+	})
+
+	t.Run("excludes unknown cipher suites from value", func(t *testing.T) {
+		t.Setenv(envTLSCipherSuites, "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,UNKNOWN_CIPHER")
+
+		s := parseTLSSettings()
+		envVars := s.envVars()
+		if len(envVars) != 1 {
+			t.Fatalf("expected 1 env var, got %d", len(envVars))
+		}
+		if envVars[0].Value != "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384" {
+			t.Errorf("expected only valid cipher in value, got %s", envVars[0].Value)
+		}
+	})
+
+	t.Run("excludes all-invalid cipher suites", func(t *testing.T) {
+		t.Setenv(envTLSCipherSuites, "UNKNOWN_CIPHER,ALSO_UNKNOWN")
+
+		s := parseTLSSettings()
+		envVars := s.envVars()
+		if envVars != nil {
+			t.Errorf("expected nil when all cipher suites are invalid, got %v", envVars)
+		}
+	})
+}
+
+func TestParseTLSSettings_TLS13_SkipsCipherSuites(t *testing.T) {
+	t.Setenv(envTLSMinVersion, "VersionTLS13")
+	t.Setenv(envTLSCipherSuites, "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384")
+
+	s := parseTLSSettings()
+	fn := s.tlsConfigFunc()
 	if fn == nil {
 		t.Fatal("expected non-nil TLS config function")
 	}
