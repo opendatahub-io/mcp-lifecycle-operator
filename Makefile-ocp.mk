@@ -2,6 +2,9 @@
 IMAGE_TAG_BASE ?= quay.io/opendatahub/odh-mcp-lifecycle-operator
 IMAGE_TAG ?= odh-stable
 
+# Use the ODH overlay to include the Prometheus ServiceMonitor.
+KUSTOMIZE_DEFAULT_DIR = config/overlays/odh
+
 include Makefile
 
 # E2E test container image.
