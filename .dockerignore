@@ -24,3 +24,5 @@
 !Makefile
 !Makefile-ocp.mk
 !LICENSE
+!test/
+!test/**/*_test.go
