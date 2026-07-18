@@ -9,7 +9,7 @@ USER 0
 WORKDIR /workspace
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -mod=vendor -a -o manager ./cmd
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -mod=readonly -a -o manager ./cmd
 
 FROM ${BASE_IMAGE}
 WORKDIR /
