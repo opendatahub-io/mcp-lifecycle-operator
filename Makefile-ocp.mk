@@ -17,4 +17,4 @@ image-e2e: ## Build e2e test container image locally.
 
 .PHONY: build-ocp
 build-ocp: clean fmt
-	CGO_ENABLED=1 $(GO_BUILD_ENV) go build $(COMMON_BUILD_ARGS) -tags=strictfipsruntime -mod=vendor -a -o manager ./cmd
+	CGO_ENABLED=1 $(GO_BUILD_ENV) go build $(COMMON_BUILD_ARGS) -tags=strictfipsruntime -mod=readonly -a -o manager ./cmd
