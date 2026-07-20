@@ -21,10 +21,8 @@ RUN CGO_ENABLED=1 GOEXPERIMENT=strictfipsruntime \
     GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
     go test -c -race -tags=e2e -o /e2e-tests ./test/e2e/
 
-ARG GOTESTSUM_VERSION=v1.13.0
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-    go install gotest.tools/gotestsum@${GOTESTSUM_VERSION} && \
-    mv $(go env GOPATH)/bin/gotestsum /gotestsum
+    go build -o /gotestsum gotest.tools/gotestsum
 
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
     go build -o /test2json $(go env GOROOT)/src/cmd/test2json
