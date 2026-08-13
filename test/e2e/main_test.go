@@ -52,6 +52,14 @@ func TestMain(m *testing.M) {
 
 	f.RegisterDSCLifecycle(testenv)
 
+	// Pre-pull test images so parallel tests don't thundering-herd the
+	// registry with duplicate pulls on a cold node.
+	testenv.Setup(f.PrewarmImages(
+		f.DefaultMCPServerImage,
+		f.AlternateMCPServerImage,
+		f.BusyboxImage,
+	))
+
 	// Create a unique namespace before each test, delete it after.
 	testenv.BeforeEachTest(func(ctx context.Context, cfg *envconf.Config, t *testing.T) (context.Context, error) {
 		f.MustDiscoverOperatorOnce(ctx, cfg, t)
@@ -160,3 +168,4 @@ func dumpDiagnostics(ctx context.Context, t *testing.T, cfg *envconf.Config, ns 
 
 	t.Log("=== END DIAGNOSTICS ===")
 }
+
