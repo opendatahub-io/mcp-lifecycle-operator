@@ -42,6 +42,7 @@ import (
 )
 
 func TestManagerPodRunning(t *testing.T) {
+	t.Parallel()
 	feature := features.New("Manager pod is running").
 		WithLabel("type", "manager").
 		Assess("controller-manager pod is Running", func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
@@ -56,6 +57,7 @@ func TestManagerPodRunning(t *testing.T) {
 }
 
 func TestMetricsEndpoint(t *testing.T) {
+	t.Parallel()
 	const metricsRoleBinding = "mcp-lifecycle-operator-metrics-binding"
 
 	feature := features.New("Metrics endpoint serves data").

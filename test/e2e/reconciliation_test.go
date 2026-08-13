@@ -44,7 +44,8 @@ const configHashAnnotation = "mcp.x-k8s.io/config-hash"
 // --- Spec Update Tests ---
 
 func TestImageUpdate(t *testing.T) {
-	imageRef := "quay.io/matzew/mcp-everything:2026.8.12"
+	t.Parallel()
+	imageRef := f.AlternateMCPServerImage
 
 	feature := features.New("MCPServer image update").
 		WithLabel("type", "reconciliation").
@@ -108,6 +109,7 @@ func TestImageUpdate(t *testing.T) {
 }
 
 func TestStorageAddition(t *testing.T) {
+	t.Parallel()
 	feature := features.New("MCPServer storage addition").
 		WithLabel("type", "reconciliation").
 		WithLabel("scenario", "storage-add").
@@ -195,6 +197,7 @@ func TestStorageAddition(t *testing.T) {
 }
 
 func TestStorageRemoval(t *testing.T) {
+	t.Parallel()
 	feature := features.New("MCPServer storage removal").
 		WithLabel("type", "reconciliation").
 		WithLabel("scenario", "storage-remove").
@@ -273,6 +276,7 @@ func TestStorageRemoval(t *testing.T) {
 // --- Drift Detection Tests ---
 
 func TestReplicaDrift(t *testing.T) {
+	t.Parallel()
 	feature := features.New("MCPServer replica drift correction").
 		WithLabel("type", "reconciliation").
 		WithLabel("scenario", "drift-replicas").
@@ -318,6 +322,7 @@ func TestReplicaDrift(t *testing.T) {
 }
 
 func TestServicePortDrift(t *testing.T) {
+	t.Parallel()
 	feature := features.New("MCPServer Service port drift correction").
 		WithLabel("type", "reconciliation").
 		WithLabel("scenario", "drift-service-port").
@@ -363,6 +368,7 @@ func TestServicePortDrift(t *testing.T) {
 }
 
 func TestDeploymentDeletion(t *testing.T) {
+	t.Parallel()
 	feature := features.New("MCPServer Deployment recreation after deletion").
 		WithLabel("type", "reconciliation").
 		WithLabel("scenario", "drift-deployment-deleted").
@@ -413,6 +419,7 @@ func TestDeploymentDeletion(t *testing.T) {
 }
 
 func TestServiceDeletion(t *testing.T) {
+	t.Parallel()
 	feature := features.New("MCPServer Service recreation after deletion").
 		WithLabel("type", "reconciliation").
 		WithLabel("scenario", "drift-service-deleted").
@@ -464,6 +471,7 @@ func TestServiceDeletion(t *testing.T) {
 // --- Ownership and Garbage Collection Tests ---
 
 func TestOwnerReferences(t *testing.T) {
+	t.Parallel()
 	feature := features.New("MCPServer OwnerReferences on child resources").
 		WithLabel("type", "reconciliation").
 		WithLabel("scenario", "ownership").
@@ -515,6 +523,7 @@ func assertOwnerReference(t *testing.T, refs []metav1.OwnerReference, expectedNa
 }
 
 func TestCascadingDeletion(t *testing.T) {
+	t.Parallel()
 	feature := features.New("MCPServer cascading deletion").
 		WithLabel("type", "reconciliation").
 		WithLabel("scenario", "cascading-delete").
@@ -564,6 +573,7 @@ func TestCascadingDeletion(t *testing.T) {
 // --- Config Hash Tests ---
 
 func TestConfigMapDataUpdateTriggersRestart(t *testing.T) {
+	t.Parallel()
 	feature := features.New("MCPServer config hash update on ConfigMap change").
 		WithLabel("type", "reconciliation").
 		WithLabel("scenario", "config-hash").
