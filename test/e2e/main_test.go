@@ -53,12 +53,19 @@ func TestMain(m *testing.M) {
 	f.RegisterDSCLifecycle(testenv)
 
 	// Pre-pull test images so parallel tests don't thundering-herd the
-	// registry with duplicate pulls on a cold node.
-	testenv.Setup(f.PrewarmImages(
+	// registry with duplicate pulls on a cold node. Images unsupported on
+	// this cluster (see f.SkipIfImageUnsupported) are dropped here too,
+	// since prewarming them would fail this Setup step before any test
+	// can run.
+	prewarmImages, err := f.FilterSupportedImages(context.Background(), cfg,
 		f.DefaultMCPServerImage,
 		f.AlternateMCPServerImage,
 		f.BusyboxImage,
-	))
+	)
+	if err != nil {
+		panic(err)
+	}
+	testenv.Setup(f.PrewarmImages(prewarmImages...))
 
 	// Create a unique namespace before each test, delete it after.
 	testenv.BeforeEachTest(func(ctx context.Context, cfg *envconf.Config, t *testing.T) (context.Context, error) {
@@ -168,4 +175,3 @@ func dumpDiagnostics(ctx context.Context, t *testing.T, cfg *envconf.Config, ns 
 
 	t.Log("=== END DIAGNOSTICS ===")
 }
-
