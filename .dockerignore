@@ -18,3 +18,10 @@
 !api/
 !internal/
 !hack/
+
+# ---- Re-include downstream additions (DO NOT REMOVE) ----
+!Makefile
+!Makefile-ocp.mk
+!LICENSE
+!test/
+!test/**
