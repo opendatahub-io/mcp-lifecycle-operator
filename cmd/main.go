@@ -41,6 +41,7 @@ import (
 
 	mcpv1alpha1 "github.com/kubernetes-sigs/mcp-lifecycle-operator/api/v1alpha1"
 	"github.com/kubernetes-sigs/mcp-lifecycle-operator/internal/controller"
+	webhookpolicy "github.com/kubernetes-sigs/mcp-lifecycle-operator/internal/webhook"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -65,6 +66,14 @@ func main() {
 	var probeAddr string
 	var secureMetrics bool
 	var enableHTTP2 bool
+	var loggingConfigMapName string
+	var loggingConfigMapNamespace string
+	var loggingConfigMapKey string
+	var enableWebhook bool
+	var imageAllowlist string
+	var requireImageDigest bool
+	var maxStorageMounts int
+	var requiredLabels string
 	var tlsOpts []func(*tls.Config)
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
 		"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
@@ -83,10 +92,33 @@ func main() {
 	flag.StringVar(&metricsCertKey, "metrics-cert-key", "tls.key", "The name of the metrics server key file.")
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
+	flag.StringVar(&loggingConfigMapName, "logging-configmap-name", defaultLoggingConfigMapName,
+		"Name of the ConfigMap to watch for runtime log level changes. Set to empty to disable.")
+	flag.StringVar(&loggingConfigMapNamespace, "logging-configmap-namespace", "",
+		"Namespace of the logging ConfigMap. Defaults to the operator pod namespace.")
+	flag.StringVar(&loggingConfigMapKey, "logging-configmap-key", defaultLoggingConfigMapKey,
+		"Key in the logging ConfigMap that holds the log level.")
+	flag.BoolVar(&enableWebhook, "enable-webhook", false,
+		"If set, the validating admission webhook for MCPServer is registered. "+
+			"Requires TLS certificates to be available (e.g. via cert-manager).")
+	flag.StringVar(&imageAllowlist, "image-allowlist", "",
+		"Comma-separated list of allowed image registry prefixes for MCPServer validation webhook. "+
+			"Falls back to IMAGE_ALLOWLIST env var if not set. Empty means no restriction.")
+	flag.BoolVar(&requireImageDigest, "require-image-digest", false,
+		"If set, the validation webhook rejects MCPServer images that do not use digest references (@sha256:...). "+
+			"Falls back to REQUIRE_IMAGE_DIGEST env var if not set.")
+	flag.IntVar(&maxStorageMounts, "max-storage-mounts", -1,
+		"Maximum number of storage mounts allowed per MCPServer. "+
+			"Falls back to MAX_STORAGE_MOUNTS env var if not set. -1 means no limit.")
+	flag.StringVar(&requiredLabels, "required-labels", "",
+		"Comma-separated list of labels that must be present on MCPServer resources. "+
+			"Falls back to REQUIRED_LABELS env var if not set. Empty means no requirement.")
 	opts := zap.Options{}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
+	atomicLevel := extractAtomicLevel(&opts)
+	opts.Level = &atomicLevel
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
 	// if the enable-http2 flag is false (the default), http/2 should be disabled
@@ -161,11 +193,18 @@ func main() {
 		metricsServerOptions.KeyName = metricsCertKey
 	}
 
+	cacheOptions, err := controller.CacheOptions()
+	if err != nil {
+		setupLog.Error(err, "unable to build cache options")
+		os.Exit(1)
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
 		Metrics:                metricsServerOptions,
 		WebhookServer:          webhookServer,
 		HealthProbeBindAddress: probeAddr,
+		Cache:                  cacheOptions,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "bed7462b.x-k8s.io",
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
@@ -186,10 +225,11 @@ func main() {
 	}
 
 	reconciler := &controller.MCPServerReconciler{
-		Client:    mgr.GetClient(),
-		Scheme:    mgr.GetScheme(),
-		Recorder:  mgr.GetEventRecorder("mcpserver-controller"),
-		APIReader: mgr.GetAPIReader(),
+		Client:     mgr.GetClient(),
+		Scheme:     mgr.GetScheme(),
+		Recorder:   mgr.GetEventRecorder("mcpserver-controller"),
+		APIReader:  mgr.GetAPIReader(),
+		TLSProfile: tlsCfg.tlsConfigFunc(),
 	}
 	if strings.EqualFold(os.Getenv("PROPAGATE_TLS_ENV_VARS"), "true") {
 		reconciler.TLSEnvVars = tlsCfg.envVars()
@@ -199,6 +239,13 @@ func main() {
 	if err := reconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "MCPServer")
 		os.Exit(1)
+	}
+	if enableWebhook {
+		admissionPolicy := parseAdmissionFlags(imageAllowlist, requireImageDigest, maxStorageMounts, requiredLabels)
+		if err := mcpv1alpha1.SetupWebhookWithManager(mgr, admissionPolicy); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "MCPServer")
+			os.Exit(1)
+		}
 	}
 	// +kubebuilder:scaffold:builder
 
@@ -211,9 +258,32 @@ func main() {
 		os.Exit(1)
 	}
 
+	loggingNamespace := resolveLoggingNamespace(loggingConfigMapNamespace)
+	if err := setupLogLevelFromConfigMap(mgr, atomicLevel, loggingNamespace, loggingConfigMapName, loggingConfigMapKey); err != nil {
+		setupLog.Error(err, "unable to set up runtime log level sync")
+		os.Exit(1)
+	}
+
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+}
+
+func parseAdmissionFlags(imageAllowlist string, requireImageDigest bool, maxStorageMounts int, requiredLabels string) *webhookpolicy.AdmissionPolicy {
+	policy := webhookpolicy.ParseAdmissionPolicy(setupLog, webhookpolicy.PolicyFlags{
+		ImageAllowlist:     imageAllowlist,
+		RequireImageDigest: requireImageDigest,
+		MaxStorageMounts:   maxStorageMounts,
+		RequiredLabels:     requiredLabels,
+	})
+	if policy.HasActiveRules() {
+		setupLog.Info("Admission webhook policy configured",
+			"imageAllowlist", policy.ImageAllowlist,
+			"requireImageDigest", policy.RequireImageDigest,
+			"maxStorageMounts", policy.MaxStorageMounts,
+			"requiredLabels", policy.RequiredLabels)
+	}
+	return policy
 }

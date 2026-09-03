@@ -39,12 +39,15 @@ import (
 	"sigs.k8s.io/e2e-framework/pkg/features"
 
 	f "github.com/kubernetes-sigs/mcp-lifecycle-operator/test/e2e/framework"
+	"github.com/kubernetes-sigs/mcp-lifecycle-operator/test/e2e/framework/labels/category"
+	"github.com/kubernetes-sigs/mcp-lifecycle-operator/test/e2e/framework/labels/speed"
 )
 
 func TestManagerPodRunning(t *testing.T) {
 	t.Parallel()
 	feature := features.New("Manager pod is running").
-		WithLabel("type", "manager").
+		WithLabel(category.Label, category.Observability).
+		WithLabel(speed.Label, speed.Fast).
 		Assess("controller-manager pod is Running", func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 			opRef := f.MustDiscoverOperatorOnce(ctx, cfg, t)
 			pod := f.FindPodByLabel(ctx, t, cfg, opRef.Namespace, "control-plane=controller-manager,app.kubernetes.io/name=mcp-lifecycle-operator")
@@ -61,7 +64,8 @@ func TestMetricsEndpoint(t *testing.T) {
 	const metricsRoleBinding = "mcp-lifecycle-operator-metrics-binding"
 
 	feature := features.New("Metrics endpoint serves data").
-		WithLabel("type", "manager").
+		WithLabel(category.Label, category.Observability).
+		WithLabel(speed.Label, speed.Fast).
 		Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 			opRef := f.MustDiscoverOperatorOnce(ctx, cfg, t)
 			r := cfg.Client().Resources()
@@ -83,7 +87,15 @@ func TestMetricsEndpoint(t *testing.T) {
 				if !apierrors.IsAlreadyExists(err) {
 					t.Fatalf("failed to create ClusterRoleBinding: %v", err)
 				}
-				t.Log("ClusterRoleBinding for metrics access already exists")
+				existing := &rbacv1.ClusterRoleBinding{}
+				if err := r.Get(ctx, metricsRoleBinding, "", existing); err != nil {
+					t.Fatalf("failed to get existing ClusterRoleBinding: %v", err)
+				}
+				existing.Subjects = crb.Subjects
+				if err := r.Update(ctx, existing); err != nil {
+					t.Fatalf("failed to update stale ClusterRoleBinding: %v", err)
+				}
+				t.Log("updated stale ClusterRoleBinding to match current operator")
 			} else {
 				t.Log("created ClusterRoleBinding for metrics access")
 			}

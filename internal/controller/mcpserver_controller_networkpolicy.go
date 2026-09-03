@@ -57,13 +57,20 @@ func (r *MCPServerReconciler) reconcileNetworkPolicy(
 			logger.Error(err, "Failed to create NetworkPolicy")
 			return err
 		}
+		if mcpServer.Spec.Network == nil || len(mcpServer.Spec.Network.IngressFrom) == 0 {
+			logger.Info("NetworkPolicy created without ingress source restrictions", "name", netpol.Name)
+		}
+		if mcpServer.Spec.Network == nil || (len(mcpServer.Spec.Network.EgressTo) == 0 && len(mcpServer.Spec.Network.EgressPorts) == 0) {
+			logger.Info("NetworkPolicy created without egress destination restrictions", "name", netpol.Name)
+		}
+		auditNetworkPolicyCreated(ctx, mcpServer, netpol.Name, hasIngressSourceRestriction(netpol), hasEgressDestinationRestriction(netpol))
 		return nil
 	} else if err != nil {
 		logger.Error(err, "Failed to get NetworkPolicy")
 		return err
 	}
 
-	if err := r.validateOwnership(existingNetpol, mcpServer); err != nil {
+	if err := r.validateOwnership(ctx, existingNetpol, mcpServer); err != nil {
 		logger.Error(err, "NetworkPolicy ownership validation failed")
 		return err
 	}
@@ -101,6 +108,7 @@ func (r *MCPServerReconciler) reconcileNetworkPolicy(
 			logger.Error(err, "Failed to update NetworkPolicy")
 			return err
 		}
+		auditNetworkPolicyUpdated(ctx, mcpServer, existingNetpol.Name)
 	} else {
 		logger.Info("NetworkPolicy already exists and is up to date", "name", netpol.Name)
 	}
@@ -112,6 +120,20 @@ func (r *MCPServerReconciler) createNetworkPolicy(mcpServer *mcpv1alpha1.MCPServ
 	labels := managedWorkloadLabels(mcpServer.Name)
 	port := intstr.FromInt32(mcpServer.Spec.Config.Port)
 	protocol := corev1.ProtocolTCP
+
+	ingressRule := networkingv1.NetworkPolicyIngressRule{
+		Ports: []networkingv1.NetworkPolicyPort{
+			{
+				Port:     &port,
+				Protocol: &protocol,
+			},
+		},
+	}
+	if mcpServer.Spec.Network != nil && len(mcpServer.Spec.Network.IngressFrom) > 0 {
+		ingressRule.From = mcpServer.Spec.Network.DeepCopy().IngressFrom
+	}
+
+	egressRules := buildEgressRules(mcpServer)
 
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
@@ -125,17 +147,65 @@ func (r *MCPServerReconciler) createNetworkPolicy(mcpServer *mcpv1alpha1.MCPServ
 			},
 			PolicyTypes: []networkingv1.PolicyType{
 				networkingv1.PolicyTypeIngress,
+				networkingv1.PolicyTypeEgress,
 			},
 			Ingress: []networkingv1.NetworkPolicyIngressRule{
-				{
-					Ports: []networkingv1.NetworkPolicyPort{
-						{
-							Port:     &port,
-							Protocol: &protocol,
-						},
-					},
-				},
+				ingressRule,
 			},
+			Egress: egressRules,
 		},
 	}
+}
+
+func buildEgressRules(mcpServer *mcpv1alpha1.MCPServer) []networkingv1.NetworkPolicyEgressRule {
+	hasEgressTo := mcpServer.Spec.Network != nil && len(mcpServer.Spec.Network.EgressTo) > 0
+	hasEgressPorts := mcpServer.Spec.Network != nil && len(mcpServer.Spec.Network.EgressPorts) > 0
+
+	if !hasEgressTo && !hasEgressPorts {
+		return []networkingv1.NetworkPolicyEgressRule{{}}
+	}
+
+	dnsPort := intstr.FromInt32(53)
+	udp := corev1.ProtocolUDP
+	tcp := corev1.ProtocolTCP
+
+	dnsRule := networkingv1.NetworkPolicyEgressRule{
+		Ports: []networkingv1.NetworkPolicyPort{
+			{Port: &dnsPort, Protocol: &udp},
+			{Port: &dnsPort, Protocol: &tcp},
+		},
+	}
+	if mcpServer.Spec.Network.DNSEgressPeer != nil {
+		dnsRule.To = []networkingv1.NetworkPolicyPeer{*mcpServer.Spec.Network.DNSEgressPeer.DeepCopy()}
+	}
+
+	userRule := networkingv1.NetworkPolicyEgressRule{}
+	if hasEgressTo {
+		userRule.To = mcpServer.Spec.Network.DeepCopy().EgressTo
+	}
+	if hasEgressPorts {
+		userRule.Ports = mcpServer.Spec.Network.DeepCopy().EgressPorts
+	}
+
+	return []networkingv1.NetworkPolicyEgressRule{dnsRule, userRule}
+}
+
+func hasIngressSourceRestriction(netpol *networkingv1.NetworkPolicy) bool {
+	for _, rule := range netpol.Spec.Ingress {
+		for _, peer := range rule.From {
+			if peer.PodSelector != nil || peer.NamespaceSelector != nil || peer.IPBlock != nil {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func hasEgressDestinationRestriction(netpol *networkingv1.NetworkPolicy) bool {
+	for _, rule := range netpol.Spec.Egress {
+		if len(rule.To) > 0 || len(rule.Ports) > 0 {
+			return true
+		}
+	}
+	return false
 }
