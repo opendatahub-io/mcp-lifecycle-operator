@@ -1,0 +1,6 @@
+# Snyk (https://snyk.io) policy file
+# ignores vulnerabilities in vendored dependencies
+version: v1.25.0
+exclude:
+  code:
+    - vendor/**
