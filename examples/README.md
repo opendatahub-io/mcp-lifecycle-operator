@@ -17,6 +17,14 @@ Deploys the [Everything MCP Server](https://github.com/modelcontextprotocol/serv
 
 See [everything-mcp-server/README.md](./everything-mcp-server/README.md) for details.
 
+## agentic-networking
+
+Demonstrates exposing an MCPServer's generated Service through
+[kube-agentic-networking](https://github.com/kubernetes-sigs/kube-agentic-networking)
+Gateway API routing (`Gateway` + `HTTPRoute`, via a direct Service `backendRef`).
+
+See [agentic-networking/README.md](./agentic-networking/README.md) for details.
+
 ## Quick Start
 
 ```bash

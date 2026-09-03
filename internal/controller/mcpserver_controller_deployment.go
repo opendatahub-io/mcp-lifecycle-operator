@@ -19,11 +19,13 @@ package controller
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -78,7 +80,7 @@ func (r *MCPServerReconciler) reconcileDeployment(
 	}
 
 	// Validate ownership before updating
-	if err := r.validateOwnership(existingDeployment, mcpServer); err != nil {
+	if err := r.validateOwnership(ctx, existingDeployment, mcpServer); err != nil {
 		logger.Error(err, "Deployment ownership validation failed")
 		return nil, err
 	}
@@ -150,6 +152,8 @@ func deploymentNeedsUpdate(mcpServer *mcpv1alpha1.MCPServer, existing, desired *
 		// Explicit DeepEqual checks for fields that can be zeroed/removed by the user.
 		// DeepDerivative skips zero-value fields in the desired spec, so removals
 		// (clearing args, env, volumes, etc.) would go undetected without these.
+		imagePullPolicyNeedsUpdate(oldPodSpec.Containers[0], newPodSpec.Containers[0]) ||
+		!sameImagePullSecrets(oldPodSpec.ImagePullSecrets, newPodSpec.ImagePullSecrets) ||
 		!equality.Semantic.DeepEqual(oldPodSpec.Containers[0].Args, newPodSpec.Containers[0].Args) ||
 		!equality.Semantic.DeepEqual(oldPodSpec.Containers[0].Env, newPodSpec.Containers[0].Env) ||
 		!equality.Semantic.DeepEqual(oldPodSpec.Containers[0].EnvFrom, newPodSpec.Containers[0].EnvFrom) ||
@@ -168,6 +172,44 @@ func deploymentNeedsUpdate(mcpServer *mcpv1alpha1.MCPServer, existing, desired *
 		deploymentAnnotationsChanged(mcpServer, existing) ||
 		deploymentLabelsChanged(mcpServer, existing) ||
 		ownershipChanged
+}
+
+// imagePullPolicyNeedsUpdate compares image pull policies while accounting for
+// Kubernetes defaulting when the MCPServer field is omitted. An empty desired
+// policy means that Kubernetes should choose Always for :latest (or untagged)
+// images and IfNotPresent for other tagged or digest-pinned images.
+func imagePullPolicyNeedsUpdate(existing, desired corev1.Container) bool {
+	if desired.ImagePullPolicy != "" {
+		return existing.ImagePullPolicy != desired.ImagePullPolicy
+	}
+	if existing.ImagePullPolicy == "" {
+		return false
+	}
+	return existing.ImagePullPolicy != defaultImagePullPolicy(desired.Image)
+}
+
+// defaultImagePullPolicy returns the policy Kubernetes applies when the
+// MCPServer does not specify one explicitly.
+func defaultImagePullPolicy(image string) corev1.PullPolicy {
+	if strings.Contains(image, "@") {
+		return corev1.PullIfNotPresent
+	}
+
+	lastSlash := strings.LastIndex(image, "/")
+	lastColon := strings.LastIndex(image, ":")
+	if lastColon <= lastSlash || strings.HasSuffix(image, ":latest") {
+		return corev1.PullAlways
+	}
+	return corev1.PullIfNotPresent
+}
+
+// sameImagePullSecrets reports whether two image pull Secret references are
+// equivalent, treating nil and empty lists as the same default state.
+func sameImagePullSecrets(existing, desired []corev1.LocalObjectReference) bool {
+	if len(existing) == 0 && len(desired) == 0 {
+		return true
+	}
+	return equality.Semantic.DeepEqual(existing, desired)
 }
 
 // tlsEnvVarOverridden reports whether name matches any operator-propagated TLS env var.
@@ -213,8 +255,9 @@ func (r *MCPServerReconciler) createDeployment(mcpServer *mcpv1alpha1.MCPServer)
 	labels := managedWorkloadLabels(mcpServer.Name)
 
 	container := corev1.Container{
-		Name:  ManagedWorkloadName,
-		Image: imageRef,
+		Name:            ManagedWorkloadName,
+		Image:           imageRef,
+		ImagePullPolicy: mcpServer.Spec.Source.ContainerImage.PullPolicy,
 		Ports: []corev1.ContainerPort{
 			{
 				Name:          "mcp",
@@ -252,9 +295,11 @@ func (r *MCPServerReconciler) createDeployment(mcpServer *mcpv1alpha1.MCPServer)
 		container.SecurityContext = defaultContainerSecurityContext()
 	}
 
-	// Apply resource requirements if specified
+	// Apply resource requirements: use user-specified if provided, otherwise apply defaults
 	if mcpServer.Spec.Runtime.Resources != nil {
 		container.Resources = *mcpServer.Spec.Runtime.Resources
+	} else {
+		container.Resources = defaultContainerResources()
 	}
 
 	// Apply health probes. Zero-valued timing fields are filled with Kubernetes
@@ -292,8 +337,9 @@ func (r *MCPServerReconciler) createDeployment(mcpServer *mcpv1alpha1.MCPServer)
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{container},
-					Volumes:    volumes,
+					Containers:       []corev1.Container{container},
+					ImagePullSecrets: mcpServer.Spec.Source.ContainerImage.ImagePullSecrets,
+					Volumes:          volumes,
 				},
 			},
 		},
@@ -381,6 +427,21 @@ func defaultContainerSecurityContext() *corev1.SecurityContext {
 		RunAsNonRoot:             new(true),
 		Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
 		SeccompProfile:           &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
+	}
+}
+
+// defaultContainerResources returns sensible default resource requests and limits
+// applied to MCP server containers when none are specified.
+func defaultContainerResources() corev1.ResourceRequirements {
+	return corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("50m"),
+			corev1.ResourceMemory: resource.MustParse("64Mi"),
+		},
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:    resource.MustParse("500m"),
+			corev1.ResourceMemory: resource.MustParse("256Mi"),
+		},
 	}
 }
 

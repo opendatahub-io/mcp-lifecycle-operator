@@ -32,15 +32,17 @@ import (
 	"sigs.k8s.io/e2e-framework/pkg/features"
 
 	f "github.com/kubernetes-sigs/mcp-lifecycle-operator/test/e2e/framework"
+	"github.com/kubernetes-sigs/mcp-lifecycle-operator/test/e2e/framework/labels/category"
+	"github.com/kubernetes-sigs/mcp-lifecycle-operator/test/e2e/framework/labels/speed"
 )
 
 func TestMCPHandshake(t *testing.T) {
 	t.Parallel()
-	const mcpServerPort = 3001
+	const mcpServerPort = 8080
 
-	feature := features.New("MCP handshake with everything-mcp-server").
-		WithLabel("type", "mcp").
-		WithLabel("component", "mcpserver").
+	feature := features.New("MCP handshake with kubernetes-mcp-server").
+		WithLabel(category.Label, category.Networking).
+		WithLabel(speed.Label, speed.Moderate).
 		Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 			return f.SetupMCPServer(ctx, t, cfg, "everything-mcp-server", true)
 		}).
@@ -116,7 +118,7 @@ func TestMCPHandshake(t *testing.T) {
 				t.Fatalf("failed to list MCP tools: %v", err)
 			}
 			if toolsResult == nil || len(toolsResult.Tools) == 0 {
-				t.Fatal("expected the everything-mcp-server to expose at least one tool")
+				t.Fatal("expected the kubernetes-mcp-server to expose at least one tool")
 			}
 
 			t.Logf("found %d tools:", len(toolsResult.Tools))
