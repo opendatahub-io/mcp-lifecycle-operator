@@ -4,11 +4,12 @@ metadata:
   annotations:
     build.appstudio.openshift.io/repo: https://github.com/opendatahub-io/mcp-lifecycle-operator?rev={{revision}}
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
+    build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
-    pipelinesascode.tekton.dev/cancel-in-progress: "false"
+    pipelinesascode.tekton.dev/cancel-in-progress: "true"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch
-      == "main"
+      == "rhoai-3.5"
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: opendatahub-builds
@@ -32,6 +33,10 @@ spec:
   - name: additional-tags
     value:
     - 'odh-pr-{{revision}}'
+  - name: hermetic
+    value: "true"
+  - name: prefetch-input
+    value: '[{"type": "gomod", "path": "."}]'
   - name: pipeline-type
     value: pull-request
   pipelineRef:

@@ -9,7 +9,7 @@ metadata:
     pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
-      == "main"
+      == "rhoai-3.5"
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: opendatahub-builds
@@ -29,6 +29,10 @@ spec:
     value: Dockerfile.konflux
   - name: path-context
     value: .
+  - name: hermetic
+    value: "true"
+  - name: prefetch-input
+    value: '[{"type": "gomod", "path": "."}]'
   pipelineRef:
     resolver: git
     params:

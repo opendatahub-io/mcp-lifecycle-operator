@@ -20,6 +20,10 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
+# KUSTOMIZE_DEFAULT_DIR is the kustomize directory used by build-installer,
+# deploy and undeploy. Override to use a different overlay.
+KUSTOMIZE_DEFAULT_DIR ?= config/default
+
 # CONTAINER_TOOL defines the container tool to be used for building images.
 # Be aware that the target commands are only tested with Docker which is
 # scaffolded by default. However, you might want to replace it to use other
@@ -80,7 +84,7 @@ COVER_OUTPUT_DIR ?= out
 .PHONY: test
 test: manifests generate fmt vet setup-envtest ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell "$(ENVTEST)" use $(ENVTEST_K8S_VERSION) --bin-dir "$(LOCALBIN)" -p path)" \
-		go test $$(go list -f '{{if or .TestGoFiles .XTestGoFiles}}{{.ImportPath}}{{end}}' ./... | grep -v /e2e) -coverprofile $(COVER_PROFILE)
+		go test $$(go list -f '{{if or .TestGoFiles .XTestGoFiles}}{{.ImportPath}}{{end}}' ./...) -coverprofile $(COVER_PROFILE)
 
 .PHONY: test-cover
 test-cover: test ## Run unit tests and write text + HTML coverage reports under out/ (informational).
@@ -168,11 +172,11 @@ lint-config: golangci-lint ## Verify golangci-lint linter configuration
 
 .PHONY: build
 build: manifests generate fmt vet ## Build manager binary.
-	go build -o bin/manager cmd/main.go
+	go build -o bin/manager ./cmd/
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
-	go run ./cmd/main.go
+	go run ./cmd/
 
 # If you wish to build the manager image targeting other platforms you can use the --platform flag.
 # (i.e. docker build --platform linux/arm64). However, you must enable docker buildKit for it.
@@ -207,7 +211,7 @@ docker-buildx: ## Build and push docker image for the manager for cross-platform
 build-installer: manifests generate kustomize ## Generate a consolidated YAML with CRDs and deployment.
 	mkdir -p dist
 	cd config/manager && "$(KUSTOMIZE)" edit set image controller=${IMG}
-	"$(KUSTOMIZE)" build config/default > dist/install.yaml
+	"$(KUSTOMIZE)" build $(KUSTOMIZE_DEFAULT_DIR) > dist/install.yaml
 
 ##@ Documentation
 
@@ -248,17 +252,25 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 
 .PHONY: deploy
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	cd config/manager && "$(KUSTOMIZE)" edit set image controller=${IMG}
-	"$(KUSTOMIZE)" build config/default | "$(KUBECTL)" apply -f -
+	$(call kustomize-set-image,$(KUSTOMIZE_DEFAULT_DIR),${IMG})
 
 .PHONY: deploy-debug
 deploy-debug: manifests kustomize ## Deploy controller with Delve for remote debugging.
-	cd config/manager && "$(KUSTOMIZE)" edit set image controller=${IMG}
-	"$(KUSTOMIZE)" build config/manager-debug | "$(KUBECTL)" apply -f -
+	$(call kustomize-set-image,config/manager-debug,${IMG})
+
+define kustomize-set-image
+set -euo pipefail; \
+dir=$$(mktemp -d); \
+trap 'rm -rf "$$dir"' EXIT; \
+ln -s $(CURDIR)/$(1) $$dir/base && \
+printf 'resources:\n- base\n' > $$dir/kustomization.yaml && \
+cd $$dir && "$(KUSTOMIZE)" edit set image $(IMAGE_TAG_BASE)=$(2) && \
+"$(KUSTOMIZE)" build $$dir | "$(KUBECTL)" apply -f -
+endef
 
 .PHONY: undeploy
 undeploy: kustomize ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	"$(KUSTOMIZE)" build config/default | "$(KUBECTL)" delete --ignore-not-found=$(ignore-not-found) -f -
+	"$(KUSTOMIZE)" build $(KUSTOMIZE_DEFAULT_DIR) | "$(KUBECTL)" delete --ignore-not-found=$(ignore-not-found) -f -
 
 ##@ Dependencies
 

@@ -35,6 +35,7 @@ import (
 )
 
 func TestImagePullFailure(t *testing.T) {
+	t.Parallel()
 	feature := features.New("MCPServer image pull failure").
 		WithLabel("type", "failure").
 		WithLabel("failure", "image-pull").
@@ -91,12 +92,13 @@ func TestImagePullFailure(t *testing.T) {
 }
 
 func TestContainerCrashLoop(t *testing.T) {
+	t.Parallel()
 	feature := features.New("MCPServer container crash loop").
 		WithLabel("type", "failure").
 		WithLabel("failure", "crash-loop").
 		Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 			return f.SetupMCPServer(ctx, t, cfg, "crash-loop", false,
-				f.WithImage("docker.io/library/busybox:1.37"),
+				f.WithImage(f.BusyboxImage),
 				f.WithArguments("sh", "-c", "exit 1"),
 				f.WithPort(8080),
 				f.WithSecurityContext(&corev1.SecurityContext{}),
@@ -131,6 +133,7 @@ func TestContainerCrashLoop(t *testing.T) {
 }
 
 func TestMCPHandshakeFailure(t *testing.T) {
+	t.Parallel()
 	feature := features.New("MCPServer handshake failure").
 		WithLabel("type", "failure").
 		WithLabel("failure", "mcp-handshake").
@@ -183,6 +186,7 @@ func TestMCPHandshakeFailure(t *testing.T) {
 }
 
 func TestMissingConfigMapReference(t *testing.T) {
+	t.Parallel()
 	feature := features.New("MCPServer missing ConfigMap reference").
 		WithLabel("type", "failure").
 		WithLabel("failure", "missing-configmap").
@@ -237,6 +241,7 @@ func TestMissingConfigMapReference(t *testing.T) {
 }
 
 func TestMissingSecretReference(t *testing.T) {
+	t.Parallel()
 	feature := features.New("MCPServer missing Secret reference").
 		WithLabel("type", "failure").
 		WithLabel("failure", "missing-secret").
@@ -291,6 +296,7 @@ func TestMissingSecretReference(t *testing.T) {
 }
 
 func TestMissingStorageConfigMapReference(t *testing.T) {
+	t.Parallel()
 	feature := features.New("MCPServer missing storage ConfigMap reference").
 		WithLabel("type", "failure").
 		WithLabel("failure", "missing-storage-configmap").
@@ -338,6 +344,7 @@ func TestMissingStorageConfigMapReference(t *testing.T) {
 }
 
 func TestRecoveryFromMissingConfigMap(t *testing.T) {
+	t.Parallel()
 	feature := features.New("MCPServer recovery from missing ConfigMap").
 		WithLabel("type", "recovery").
 		WithLabel("failure", "missing-configmap").
@@ -401,6 +408,7 @@ func TestRecoveryFromMissingConfigMap(t *testing.T) {
 }
 
 func TestRecoveryFromImagePullFailure(t *testing.T) {
+	t.Parallel()
 	feature := features.New("MCPServer recovery from image pull failure").
 		WithLabel("type", "recovery").
 		WithLabel("failure", "image-pull").
@@ -421,13 +429,18 @@ func TestRecoveryFromImagePullFailure(t *testing.T) {
 			return ctx
 		}).
 		Assess("update to valid image and recover", func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+			// Setup used an intentionally invalid image, so SetupMCPServer's
+			// built-in check never saw f.DefaultMCPServerImage; check here
+			// since this step is what actually switches to it.
+			f.SkipIfImageUnsupported(ctx, t, cfg, f.DefaultMCPServerImage)
+
 			server := f.ServerFromContext(ctx)
 			r := cfg.Client().Resources()
 
 			f.UpdateWithRetry(ctx, t, r, server, func(s *mcpv1alpha1.MCPServer) {
-				s.Spec.Source.ContainerImage.Ref = "quay.io/matzew/mcp-everything:latest"
+				s.Spec.Source.ContainerImage.Ref = f.DefaultMCPServerImage
 			})
-			t.Log("updated image to quay.io/matzew/mcp-everything:latest")
+			t.Log("updated image to default MCP server image")
 
 			f.WaitForMCPServerReconciledAndReady(ctx, t, r, server, 5*time.Minute)
 			t.Log("Ready=True — recovery from image pull failure complete")
