@@ -31,13 +31,17 @@ import (
 
 	mcpv1alpha1 "github.com/kubernetes-sigs/mcp-lifecycle-operator/api/v1alpha1"
 	f "github.com/kubernetes-sigs/mcp-lifecycle-operator/test/e2e/framework"
+	"github.com/kubernetes-sigs/mcp-lifecycle-operator/test/e2e/framework/labels/category"
+	"github.com/kubernetes-sigs/mcp-lifecycle-operator/test/e2e/framework/labels/scenario"
+	"github.com/kubernetes-sigs/mcp-lifecycle-operator/test/e2e/framework/labels/speed"
 )
 
 func TestMCPServerHappyPath(t *testing.T) {
 	t.Parallel()
 	feature := features.New("MCPServer happy path").
-		WithLabel("type", "lifecycle").
-		WithLabel("component", "mcpserver").
+		WithLabel(category.Label, category.Lifecycle).
+		WithLabel(speed.Label, speed.Fast).
+		WithLabel(scenario.Label, scenario.Deploy).
 		Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 			return f.SetupMCPServer(ctx, t, cfg, "test-server", false)
 		}).
@@ -88,7 +92,7 @@ func TestMCPServerHappyPath(t *testing.T) {
 			}
 
 			// address URL is correct
-			f.AssertAddressURL(t, server, 3001)
+			f.AssertAddressURL(t, server, 8080)
 
 			// Accepted condition is True
 			accepted := f.GetMCPServerCondition(server, "Accepted")
@@ -112,12 +116,13 @@ func TestMCPServerHappyPath(t *testing.T) {
 func TestMCPServerUpdatePort(t *testing.T) {
 	t.Parallel()
 	feature := features.New("MCPServer port update").
-		WithLabel("type", "update").
-		WithLabel("component", "mcpserver").
+		WithLabel(category.Label, category.Lifecycle).
+		WithLabel(speed.Label, speed.Fast).
+		WithLabel(scenario.Label, scenario.SpecUpdate).
 		Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 			return f.SetupMCPServer(ctx, t, cfg, "test-server", true)
 		}).
-		Assess("update port from 3001 to 3002", func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+		Assess("update port from 8080 to 3002", func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 			server := f.ServerFromContext(ctx)
 			r := cfg.Client().Resources()
 
@@ -145,7 +150,7 @@ func TestMCPServerUpdatePort(t *testing.T) {
 				t.Fatalf("failed to get MCPServer: %v", err)
 			}
 
-			f.AssertAddressURL(t, server, 3002)
+			f.AssertAddressUnset(t, server)
 
 			svc := &corev1.Service{}
 			if err := r.Get(ctx, server.Name, server.Namespace, svc); err != nil {
@@ -179,8 +184,8 @@ func TestMCPServerUpdatePort(t *testing.T) {
 				t.Fatal("expected a container port 3002 in the Deployment")
 			}
 
-			t.Logf("port update verified: address=%s, servicePort=%d, containerPort=3002",
-				server.Status.Address.URL, svc.Spec.Ports[0].Port)
+			t.Logf("port update verified: address unset (not Ready), servicePort=%d, containerPort=3002",
+				svc.Spec.Ports[0].Port)
 
 			return ctx
 		}).

@@ -18,10 +18,15 @@ package controller
 
 import (
 	"context"
+	"crypto/x509"
 	"fmt"
+	"net"
 
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	mcpv1alpha1 "github.com/kubernetes-sigs/mcp-lifecycle-operator/api/v1alpha1"
@@ -65,6 +70,52 @@ func (r *MCPServerReconciler) validateConfig(
 		}
 	}
 
+	// Validate network peers and ports
+	if mcpServer.Spec.Network != nil {
+		for i, peer := range mcpServer.Spec.Network.IngressFrom {
+			if err := validateNetworkPolicyPeer(peer, "network.ingressFrom", i); err != nil {
+				return err
+			}
+		}
+		for i, peer := range mcpServer.Spec.Network.EgressTo {
+			if err := validateNetworkPolicyPeer(peer, "network.egressTo", i); err != nil {
+				return err
+			}
+		}
+		for i, port := range mcpServer.Spec.Network.EgressPorts {
+			if err := validateNetworkPolicyPort(port, "network.egressPorts", i); err != nil {
+				return err
+			}
+		}
+		if mcpServer.Spec.Network.DNSEgressPeer != nil {
+			if err := validateNetworkPolicyPeerAtPath(*mcpServer.Spec.Network.DNSEgressPeer, "network.dnsEgressPeer"); err != nil {
+				return err
+			}
+		}
+	}
+
+	// Validate TLS configuration
+	if mcpServer.Spec.Transport != nil &&
+		mcpServer.Spec.Transport.TLS != nil &&
+		mcpServer.Spec.Transport.TLS.Enabled {
+		tlsCfg := mcpServer.Spec.Transport.TLS
+		if tlsCfg.InsecureSkipVerify && tlsCfg.CABundleSecret != nil {
+			return &ValidationError{
+				Reason:  ReasonInvalid,
+				Message: "insecureSkipVerify and caBundleSecret are mutually exclusive",
+			}
+		}
+		if tlsCfg.CABundleSecret != nil {
+			if err := r.validateCABundleSecret(
+				ctx,
+				mcpServer.Namespace,
+				tlsCfg.CABundleSecret.Name,
+			); err != nil {
+				return err
+			}
+		}
+	}
+
 	// All validation passed
 	return nil
 }
@@ -76,7 +127,7 @@ func (r *MCPServerReconciler) validateReferencedConfigMap(
 	namespace, name, resourceDesc string,
 ) error {
 	cm := &corev1.ConfigMap{}
-	if err := r.Get(ctx, client.ObjectKey{Name: name, Namespace: namespace}, cm); err != nil {
+	if err := r.APIReader.Get(ctx, client.ObjectKey{Name: name, Namespace: namespace}, cm); err != nil {
 		return classifyAPIError(resourceDesc, namespace, err)
 	}
 	return nil
@@ -89,8 +140,36 @@ func (r *MCPServerReconciler) validateReferencedSecret(
 	namespace, name, resourceDesc string,
 ) error {
 	secret := &corev1.Secret{}
-	if err := r.Get(ctx, client.ObjectKey{Name: name, Namespace: namespace}, secret); err != nil {
+	if err := r.APIReader.Get(ctx, client.ObjectKey{Name: name, Namespace: namespace}, secret); err != nil {
 		return classifyAPIError(resourceDesc, namespace, err)
+	}
+	return nil
+}
+
+// validateCABundleSecret validates that the referenced Secret exists, contains
+// the "ca.crt" key, and that the value is parseable PEM. This catches permanent
+// config errors at validation time instead of burning handshake retries.
+func (r *MCPServerReconciler) validateCABundleSecret(
+	ctx context.Context,
+	namespace, name string,
+) error {
+	secret := &corev1.Secret{}
+	if err := r.APIReader.Get(ctx, client.ObjectKey{Name: name, Namespace: namespace}, secret); err != nil {
+		return classifyAPIError("TLS CA bundle Secret", namespace, err)
+	}
+	caPEM, ok := secret.Data[caBundleKey]
+	if !ok {
+		return &ValidationError{
+			Reason:  ReasonInvalid,
+			Message: fmt.Sprintf("TLS CA bundle Secret %q does not contain key %q", name, caBundleKey),
+		}
+	}
+	pool := x509.NewCertPool()
+	if !pool.AppendCertsFromPEM(caPEM) {
+		return &ValidationError{
+			Reason:  ReasonInvalid,
+			Message: fmt.Sprintf("TLS CA bundle Secret %q key %q contains no valid PEM certificates", name, caBundleKey),
+		}
 	}
 	return nil
 }
@@ -239,4 +318,121 @@ func classifyAPIError(resourceDesc string, namespace string, err error) error {
 		}
 	}
 	return fmt.Errorf("transient error validating %s: %w", resourceDesc, err)
+}
+
+// validateNetworkPolicyPort validates a single NetworkPolicyPort entry.
+// fieldPath is the JSON path prefix (e.g. "network.egressPorts").
+func validateNetworkPolicyPort(port networkingv1.NetworkPolicyPort, fieldPath string, index int) *ValidationError {
+	if port.Protocol != nil {
+		switch *port.Protocol {
+		case corev1.ProtocolTCP, corev1.ProtocolUDP, corev1.ProtocolSCTP:
+		default:
+			return &ValidationError{
+				Reason:  ReasonInvalid,
+				Message: fmt.Sprintf("%s[%d]: unsupported protocol %q", fieldPath, index, *port.Protocol),
+			}
+		}
+	}
+	if port.Port != nil {
+		if port.Port.Type == intstr.Int {
+			p := port.Port.IntValue()
+			if p < 1 || p > 65535 {
+				return &ValidationError{
+					Reason:  ReasonInvalid,
+					Message: fmt.Sprintf("%s[%d]: port %d out of range 1-65535", fieldPath, index, p),
+				}
+			}
+		} else if errs := validation.IsValidPortName(port.Port.String()); len(errs) > 0 {
+			return &ValidationError{
+				Reason:  ReasonInvalid,
+				Message: fmt.Sprintf("%s[%d]: invalid port name %q: %s", fieldPath, index, port.Port.String(), errs[0]),
+			}
+		}
+	}
+	if port.EndPort != nil {
+		if port.Port == nil {
+			return &ValidationError{
+				Reason:  ReasonInvalid,
+				Message: fmt.Sprintf("%s[%d]: endPort requires port to be set", fieldPath, index),
+			}
+		}
+		if port.Port.Type != intstr.Int {
+			return &ValidationError{
+				Reason:  ReasonInvalid,
+				Message: fmt.Sprintf("%s[%d]: endPort requires a numeric port, not %q", fieldPath, index, port.Port.String()),
+			}
+		}
+		if *port.EndPort < int32(port.Port.IntValue()) {
+			return &ValidationError{
+				Reason:  ReasonInvalid,
+				Message: fmt.Sprintf("%s[%d]: endPort %d must be >= port %d", fieldPath, index, *port.EndPort, port.Port.IntValue()),
+			}
+		}
+		if *port.EndPort < 1 || *port.EndPort > 65535 {
+			return &ValidationError{
+				Reason:  ReasonInvalid,
+				Message: fmt.Sprintf("%s[%d]: endPort %d out of range 1-65535", fieldPath, index, *port.EndPort),
+			}
+		}
+	}
+	return nil
+}
+
+// validateNetworkPolicyPeer validates a single NetworkPolicyPeer entry from a
+// list field. fieldPath is the JSON path prefix (e.g. "network.ingressFrom" or
+// "network.egressTo"); index is appended as "[index]" to identify the entry.
+func validateNetworkPolicyPeer(peer networkingv1.NetworkPolicyPeer, fieldPath string, index int) *ValidationError {
+	return validateNetworkPolicyPeerAtPath(peer, fmt.Sprintf("%s[%d]", fieldPath, index))
+}
+
+// validateNetworkPolicyPeerAtPath validates a single NetworkPolicyPeer entry
+// against an already-fully-formed field path. Use this directly for singular
+// (non-list) peer fields, where appending an index would misleadingly imply
+// an array; use validateNetworkPolicyPeer for list fields instead.
+func validateNetworkPolicyPeerAtPath(peer networkingv1.NetworkPolicyPeer, fieldPath string) *ValidationError {
+	if peer.PodSelector == nil && peer.NamespaceSelector == nil && peer.IPBlock == nil {
+		return &ValidationError{
+			Reason:  ReasonInvalid,
+			Message: fmt.Sprintf("%s: must specify at least one of podSelector, namespaceSelector, or ipBlock", fieldPath),
+		}
+	}
+	if peer.IPBlock != nil {
+		if peer.PodSelector != nil || peer.NamespaceSelector != nil {
+			return &ValidationError{
+				Reason:  ReasonInvalid,
+				Message: fmt.Sprintf("%s: ipBlock cannot be combined with podSelector or namespaceSelector", fieldPath),
+			}
+		}
+		if peer.IPBlock.CIDR == "" {
+			return &ValidationError{
+				Reason:  ReasonInvalid,
+				Message: fmt.Sprintf("%s: ipBlock.cidr must not be empty", fieldPath),
+			}
+		}
+		_, cidrNet, err := net.ParseCIDR(peer.IPBlock.CIDR)
+		if err != nil {
+			return &ValidationError{
+				Reason:  ReasonInvalid,
+				Message: fmt.Sprintf("%s: invalid ipBlock.cidr %q: %v", fieldPath, peer.IPBlock.CIDR, err),
+			}
+		}
+		parentOnes, parentBits := cidrNet.Mask.Size()
+		for j, except := range peer.IPBlock.Except {
+			_, exceptNet, err := net.ParseCIDR(except)
+			if err != nil {
+				return &ValidationError{
+					Reason:  ReasonInvalid,
+					Message: fmt.Sprintf("%s: invalid ipBlock.except[%d] %q: %v", fieldPath, j, except, err),
+				}
+			}
+			exceptOnes, exceptBits := exceptNet.Mask.Size()
+			if parentBits != exceptBits || parentOnes > exceptOnes || !cidrNet.Contains(exceptNet.IP) {
+				return &ValidationError{
+					Reason:  ReasonInvalid,
+					Message: fmt.Sprintf("%s: ipBlock.except[%d] %q is not within cidr %q", fieldPath, j, except, peer.IPBlock.CIDR),
+				}
+			}
+		}
+	}
+	return nil
 }

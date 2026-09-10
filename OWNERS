@@ -1,3 +1,5 @@
+# See the OWNERS docs at https://go.k8s.io/owners
+
 reviewers:
   - aliok
   - Cali0707
@@ -14,4 +16,8 @@ approvers:
   - matzew
   - Kaustubh-pande
   - RadekManak
+
+emeritus_approvers:
+  - ArangoGutierrez
+
 component: "mcp-lifecycle-operator"

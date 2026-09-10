@@ -21,8 +21,11 @@ package controller
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
+	"net/http"
+	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -87,6 +90,11 @@ const (
 	ReasonMCPEndpointUnavailable   = "MCPEndpointUnavailable"
 )
 
+// Event-only reasons (not used as condition reasons).
+const (
+	EventReasonCapabilityChanged = "CapabilityChanged"
+)
+
 // Container waiting reasons from Kubernetes pod status.
 const (
 	WaitingReasonImagePullBackOff           = "ImagePullBackOff"
@@ -102,9 +110,6 @@ const (
 
 // Reconciliation constants.
 const (
-	// requeueDelayDeploymentUnavailable is the delay before requeuing when a deployment is not yet available.
-	requeueDelayDeploymentUnavailable = 15 * time.Second
-
 	// eventActionConfigurationValidation is the reporting action for configuration validation outcomes.
 	eventActionConfigurationValidation = "ConfigurationValidation"
 	// eventActionConfigurationAccepted is the reporting action when Accepted becomes True.
@@ -121,6 +126,8 @@ const (
 	eventActionServiceReconcileFailed = "ServiceReconcileFailed"
 	// eventActionNetworkPolicyReconcileFailed is the reporting action when NetworkPolicy reconciliation fails.
 	eventActionNetworkPolicyReconcileFailed = "NetworkPolicyReconcileFailed"
+	// eventActionCapabilityChangeDetected is the reporting action when capability changes are detected.
+	eventActionCapabilityChangeDetected = "CapabilityChangeDetected"
 
 	// requeueDelayMCPHandshake is the initial delay before requeuing when an MCP handshake fails.
 	requeueDelayMCPHandshake = 10 * time.Second
@@ -159,11 +166,18 @@ type MCPServerReconciler struct {
 	client.Client
 	Scheme    *runtime.Scheme
 	Recorder  events.EventRecorder
-	MCPDialer func(ctx context.Context, url string) (*mcpv1alpha1.MCPServerInfo, error) // nil = use real MCP handshake
+	MCPDialer func(ctx context.Context, url string, transport *http.Transport) (*mcpv1alpha1.MCPServerInfo, error) // nil = use real MCP handshake
 	APIReader client.Reader
 	// TLSEnvVars holds TLS-related environment variables to propagate to every
 	// MCP server container. Populated at startup when PROPAGATE_TLS_ENV_VARS is set.
 	TLSEnvVars []corev1.EnvVar
+	// TLSProfile applies operator-wide TLS settings (min version, cipher suites)
+	// to outbound connections. Populated from TLS_MIN_VERSION / TLS_CIPHER_SUITES.
+	TLSProfile func(*tls.Config)
+	// tlsCABundleHashes tracks the SHA-256 hash of each MCPServer's CA bundle
+	// Secret content at the time of the last successful handshake. Keyed by
+	// namespace/name. Used to detect CA rotation without bumping generation.
+	tlsCABundleHashes sync.Map
 }
 
 // +kubebuilder:rbac:groups=mcp.x-k8s.io,resources=mcpservers,verbs=get;list;watch;update;patch
@@ -173,7 +187,8 @@ type MCPServerReconciler struct {
 // +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update
 // +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
-// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list
+// +kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=get;list;watch;create;update
 // +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 // +kubebuilder:rbac:groups=events.k8s.io,resources=events,verbs=create;patch
@@ -191,11 +206,20 @@ func (r *MCPServerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if err := r.Get(ctx, req.NamespacedName, mcpServer); err != nil {
 		if apierrors.IsNotFound(err) {
 			logger.Info("MCPServer resource not found, ignoring since object must be deleted")
+			r.tlsCABundleHashes.Delete(req.Namespace + "/" + req.Name)
 			cleanupMetrics(req.Name, req.Namespace)
 			return ctrl.Result{}, nil
 		}
 		logger.Error(err, "Failed to get MCPServer")
 		return ctrl.Result{}, err
+	}
+
+	// Skip reconciliation when the MCPServer or its namespace is being deleted
+	// to avoid error-level log spam from failed resource creation (see #300).
+	if skip, err := r.shouldSkipReconciliation(ctx, mcpServer, req.Namespace); err != nil {
+		return ctrl.Result{}, err
+	} else if skip {
+		return ctrl.Result{}, nil
 	}
 
 	logger.Info("Reconciling MCPServer", "name", mcpServer.Name, "namespace", mcpServer.Namespace)
@@ -329,18 +353,27 @@ func (r *MCPServerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	recordCondition(mcpServer.Name, mcpServer.Namespace,
 		readyCondition.Type, string(readyCondition.Status), readyCondition.Reason)
 
+	r.maybeEmitDeploymentUnavailableEvent(mcpServer, readyCondition)
+
 	// Build status
 	path := mcpServer.Spec.Config.Path
 	if path == "" {
 		path = defaultMCPPath
 	}
 
-	mcpURL := fmt.Sprintf("http://%s.%s.svc.cluster.local:%d%s",
-		mcpServer.Name, mcpServer.Namespace, mcpServer.Spec.Config.Port, path)
+	mcpURL := fmt.Sprintf("%s://%s.%s.svc.cluster.local:%d%s",
+		urlScheme(mcpServer), mcpServer.Name, mcpServer.Namespace, mcpServer.Spec.Config.Port, path)
+
+	// Compute current TLS CA bundle hash so the handshake is re-verified
+	// when the CA bundle Secret content changes (which does not bump generation).
+	var tlsCABundleHash string
+	if mcpServer.Spec.Transport != nil && mcpServer.Spec.Transport.TLS != nil {
+		tlsCABundleHash = computeTLSCABundleHash(ctx, r.APIReader, mcpServer.Namespace, mcpServer.Spec.Transport.TLS)
+	}
 
 	// If deployment-level readiness reports Available, verify the MCP endpoint.
 	var serverInfo *mcpv1alpha1.MCPServerInfo
-	readyCondition, serverInfo = r.reconcileHandshake(ctx, mcpServer, mcpURL, readyCondition)
+	readyCondition, serverInfo = r.reconcileHandshake(ctx, mcpServer, mcpURL, readyCondition, tlsCABundleHash)
 
 	// Normal Event once per Ready transition to Available after a successful handshake.
 	if pendingServerReadyEvent &&
@@ -358,36 +391,17 @@ func (r *MCPServerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		WithHandshakeRetryCount(handshakeRetryCount).
 		WithReplicas(ptr.Deref(existingDeployment.Spec.Replicas, 1)).
 		WithReadyReplicas(existingDeployment.Status.ReadyReplicas).
-		WithAddress(acv1alpha1.MCPServerAddress().
-			WithURL(mcpURL)).
 		WithConditions(
 			conditionToAC(acceptedCondition),
 			conditionToAC(readyCondition),
 		)
 
+	status = withAddressWhenAvailable(status, readyCondition, mcpURL)
+
+	capDiff := capabilityChangeMessage(mcpServer, serverInfo)
+
 	if serverInfo != nil {
-		si := acv1alpha1.MCPServerInfo()
-		if serverInfo.Name != "" {
-			si = si.WithName(serverInfo.Name)
-		}
-		if serverInfo.Version != "" {
-			si = si.WithVersion(serverInfo.Version)
-		}
-		if serverInfo.ProtocolVersion != "" {
-			si = si.WithProtocolVersion(serverInfo.ProtocolVersion)
-		}
-		if serverInfo.Instructions != "" {
-			si = si.WithInstructions(serverInfo.Instructions)
-		}
-		if serverInfo.Capabilities != nil {
-			si = si.WithCapabilities(acv1alpha1.MCPServerCapabilities().
-				WithTools(serverInfo.Capabilities.Tools).
-				WithResources(serverInfo.Capabilities.Resources).
-				WithPrompts(serverInfo.Capabilities.Prompts).
-				WithLogging(serverInfo.Capabilities.Logging).
-				WithCompletions(serverInfo.Capabilities.Completions))
-		}
-		status = status.WithServerInfo(si)
+		status = status.WithServerInfo(serverInfoToAC(serverInfo))
 	}
 
 	if err := r.applyStatus(ctx, mcpServer, status); err != nil {
@@ -395,16 +409,20 @@ func (r *MCPServerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
+	r.updateTLSCABundleHash(mcpServer, tlsCABundleHash, readyCondition)
+
+	if capDiff != "" {
+		capabilityChangesTotal.WithLabelValues(mcpServer.Name, mcpServer.Namespace).Inc()
+		r.emitCapabilityChangeDetected(mcpServer, capDiff)
+		auditCapabilityChange(ctx, mcpServer, capDiff)
+	}
+
 	logger.Info("Successfully reconciled MCPServer",
 		"accepted", acceptedCondition.Status,
 		"ready", readyCondition.Status)
 
-	// If Deployment is not yet available, requeue to check again later
-	if readyCondition.Status == metav1.ConditionFalse && readyCondition.Reason == ReasonDeploymentUnavailable {
-		logger.Info("Deployment not yet available, requeuing to check again",
-			"requeueAfter", requeueDelayDeploymentUnavailable)
-		return ctrl.Result{RequeueAfter: requeueDelayDeploymentUnavailable}, nil
-	}
+	// Deployment progress is driven by the Deployment and Pod watches rather than a
+	// timed requeue; pod-level failures surface via podDiagnosticsChangedPredicate.
 
 	// If MCP endpoint is not yet reachable, requeue with exponential backoff up to a max retry count.
 	if readyCondition.Status == metav1.ConditionFalse && readyCondition.Reason == ReasonMCPEndpointUnavailable {
@@ -412,6 +430,7 @@ func (r *MCPServerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if retryCount >= maxMCPHandshakeRetries {
 			logger.Info("MCP handshake retries exhausted, not requeuing",
 				"retries", retryCount, "max", maxMCPHandshakeRetries)
+			auditHandshakeRetriesExhausted(ctx, mcpServer, retryCount, maxMCPHandshakeRetries)
 			return ctrl.Result{}, nil
 		}
 		// retryCount is 1-based (already incremented); backoff expects 0-based
@@ -422,6 +441,57 @@ func (r *MCPServerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func serverInfoToAC(info *mcpv1alpha1.MCPServerInfo) *acv1alpha1.MCPServerInfoApplyConfiguration {
+	si := acv1alpha1.MCPServerInfo()
+	if info.Name != "" {
+		si = si.WithName(info.Name)
+	}
+	if info.Version != "" {
+		si = si.WithVersion(info.Version)
+	}
+	if info.ProtocolVersion != "" {
+		si = si.WithProtocolVersion(info.ProtocolVersion)
+	}
+	if info.Instructions != "" {
+		si = si.WithInstructions(info.Instructions)
+	}
+	if info.Capabilities != nil {
+		si = si.WithCapabilities(acv1alpha1.MCPServerCapabilities().
+			WithTools(info.Capabilities.Tools).
+			WithResources(info.Capabilities.Resources).
+			WithPrompts(info.Capabilities.Prompts).
+			WithLogging(info.Capabilities.Logging). //nolint:staticcheck // TODO: remove after SEP-2577 deprecation window (mid-2027)
+			WithCompletions(info.Capabilities.Completions))
+	}
+	return si
+}
+
+// shouldSkipReconciliation returns true when the MCPServer is being deleted or
+// its namespace is terminating / already gone. This lets Reconcile return early
+// and avoid noisy errors from resource creation in a dying namespace (see #300).
+func (r *MCPServerReconciler) shouldSkipReconciliation(ctx context.Context, mcpServer *mcpv1alpha1.MCPServer, namespace string) (bool, error) {
+	logger := log.FromContext(ctx)
+
+	if mcpServer.DeletionTimestamp != nil {
+		logger.Info("MCPServer is being deleted, skipping reconciliation")
+		return true, nil
+	}
+
+	ns := &corev1.Namespace{}
+	if err := r.Get(ctx, client.ObjectKey{Name: namespace}, ns); err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Info("Namespace not found, skipping reconciliation", "namespace", namespace)
+			return true, nil
+		}
+		return false, err
+	}
+	if ns.DeletionTimestamp != nil {
+		logger.Info("Namespace is terminating, skipping reconciliation", "namespace", namespace)
+		return true, nil
+	}
+	return false, nil
 }
 
 func (r *MCPServerReconciler) reconcilePermanentValidationError(
@@ -483,6 +553,7 @@ func (r *MCPServerReconciler) reconcilePermanentValidationError(
 	}
 
 	logger.Info("MCPServer configuration is invalid", "reason", validationErr.Reason)
+	auditConfigurationRejected(ctx, mcpServer, validationErr.Reason, validationErr.Message)
 	recordCondition(mcpServer.Name, mcpServer.Namespace,
 		readyCondition.Type, string(readyCondition.Status), readyCondition.Reason)
 	return nil
@@ -509,6 +580,28 @@ func (r *MCPServerReconciler) emitServerReady(mcpServer *mcpv1alpha1.MCPServer) 
 		return
 	}
 	r.Recorder.Eventf(mcpServer, nil, corev1.EventTypeNormal, ReasonAvailable, eventActionServerReady, "MCPServer %s is ready; Ready=True", mcpServer.Name)
+}
+
+func (r *MCPServerReconciler) maybeEmitDeploymentUnavailableEvent(
+	mcpServer *mcpv1alpha1.MCPServer,
+	readyCondition metav1.Condition,
+) {
+	if readyCondition.Status == metav1.ConditionFalse &&
+		readyCondition.Reason == ReasonDeploymentUnavailable &&
+		!duplicateDeploymentUnavailable(mcpServer.Status.Conditions, readyCondition.Message) {
+		r.emitDeploymentReconcileFailed(mcpServer, readyCondition.Message)
+	}
+}
+
+func withAddressWhenAvailable(
+	status *acv1alpha1.MCPServerStatusApplyConfiguration,
+	readyCondition metav1.Condition,
+	mcpURL string,
+) *acv1alpha1.MCPServerStatusApplyConfiguration {
+	if readyCondition.Status == metav1.ConditionTrue && readyCondition.Reason == ReasonAvailable {
+		return status.WithAddress(acv1alpha1.MCPServerAddress().WithURL(mcpURL))
+	}
+	return status
 }
 
 func (r *MCPServerReconciler) emitDeploymentReconcileFailed(mcpServer *mcpv1alpha1.MCPServer, message string) {
@@ -614,6 +707,24 @@ func (r *MCPServerReconciler) emitMCPHandshakeRetriesExhausted(mcpServer *mcpv1a
 		mcpServer.Name, retryCount)
 }
 
+func capabilityChangeMessage(mcpServer *mcpv1alpha1.MCPServer, serverInfo *mcpv1alpha1.MCPServerInfo) string {
+	if serverInfo == nil || mcpServer.Status.ServerInfo == nil {
+		return ""
+	}
+	if serverInfo.Capabilities == nil && mcpServer.Status.ServerInfo.Capabilities == nil {
+		return ""
+	}
+	return capabilityDiffMessage(mcpServer.Status.ServerInfo.Capabilities, serverInfo.Capabilities)
+}
+
+func (r *MCPServerReconciler) emitCapabilityChangeDetected(mcpServer *mcpv1alpha1.MCPServer, diff string) {
+	if r.Recorder == nil {
+		return
+	}
+	r.Recorder.Eventf(mcpServer, nil, corev1.EventTypeWarning, EventReasonCapabilityChanged, eventActionCapabilityChangeDetected,
+		"MCP server capabilities changed: %s", diff)
+}
+
 func (r *MCPServerReconciler) applyStatus(
 	ctx context.Context,
 	mcpServer *mcpv1alpha1.MCPServer,
@@ -660,11 +771,16 @@ func (r *MCPServerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.Service{}).
 		Owns(&networkingv1.NetworkPolicy{}).
 		Watches(
+			&corev1.Pod{},
+			handler.EnqueueRequestsFromMapFunc(r.findMCPServersForPod),
+			builder.WithPredicates(podDiagnosticsChangedPredicate()),
+		).
+		WatchesMetadata(
 			&corev1.ConfigMap{},
 			handler.EnqueueRequestsFromMapFunc(r.findMCPServersForConfigMap),
 			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}),
 		).
-		Watches(
+		WatchesMetadata(
 			&corev1.Secret{},
 			handler.EnqueueRequestsFromMapFunc(r.findMCPServersForSecret),
 			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}),

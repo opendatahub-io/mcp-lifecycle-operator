@@ -32,13 +32,17 @@ import (
 
 	mcpv1alpha1 "github.com/kubernetes-sigs/mcp-lifecycle-operator/api/v1alpha1"
 	f "github.com/kubernetes-sigs/mcp-lifecycle-operator/test/e2e/framework"
+	"github.com/kubernetes-sigs/mcp-lifecycle-operator/test/e2e/framework/labels/category"
+	"github.com/kubernetes-sigs/mcp-lifecycle-operator/test/e2e/framework/labels/scenario"
+	"github.com/kubernetes-sigs/mcp-lifecycle-operator/test/e2e/framework/labels/speed"
 )
 
 func TestImagePullFailure(t *testing.T) {
 	t.Parallel()
 	feature := features.New("MCPServer image pull failure").
-		WithLabel("type", "failure").
-		WithLabel("failure", "image-pull").
+		WithLabel(category.Label, category.Resilience).
+		WithLabel(speed.Label, speed.Slow).
+		WithLabel(scenario.Label, scenario.Failure).
 		Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 			return f.SetupMCPServer(ctx, t, cfg, "img-pull-fail", false,
 				f.WithImage("invalid.example.com/nonexistent/image:v0.0.1"),
@@ -57,6 +61,10 @@ func TestImagePullFailure(t *testing.T) {
 			}
 			ready := f.GetMCPServerCondition(server, "Ready")
 			t.Logf("Ready condition: status=%s reason=%s message=%q", ready.Status, ready.Reason, ready.Message)
+
+			if server.Status.Address != nil && server.Status.Address.URL != "" {
+				t.Fatalf("expected status.address.url to be unset when Ready=False, got %q", server.Status.Address.URL)
+			}
 
 			return ctx
 		}).
@@ -94,8 +102,9 @@ func TestImagePullFailure(t *testing.T) {
 func TestContainerCrashLoop(t *testing.T) {
 	t.Parallel()
 	feature := features.New("MCPServer container crash loop").
-		WithLabel("type", "failure").
-		WithLabel("failure", "crash-loop").
+		WithLabel(category.Label, category.Resilience).
+		WithLabel(speed.Label, speed.Moderate).
+		WithLabel(scenario.Label, scenario.Failure).
 		Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 			return f.SetupMCPServer(ctx, t, cfg, "crash-loop", false,
 				f.WithImage(f.BusyboxImage),
@@ -122,6 +131,10 @@ func TestContainerCrashLoop(t *testing.T) {
 				t.Errorf("expected message to contain exit code details, got %q", ready.Message)
 			}
 
+			if server.Status.Address != nil && server.Status.Address.URL != "" {
+				t.Fatalf("expected status.address.url to be unset when Ready=False, got %q", server.Status.Address.URL)
+			}
+
 			return ctx
 		}).
 		Teardown(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
@@ -135,8 +148,9 @@ func TestContainerCrashLoop(t *testing.T) {
 func TestMCPHandshakeFailure(t *testing.T) {
 	t.Parallel()
 	feature := features.New("MCPServer handshake failure").
-		WithLabel("type", "failure").
-		WithLabel("failure", "mcp-handshake").
+		WithLabel(category.Label, category.Resilience).
+		WithLabel(speed.Label, speed.Fast).
+		WithLabel(scenario.Label, scenario.Failure).
 		Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 			return f.SetupMCPServer(ctx, t, cfg, "handshake-fail", false,
 				f.WithPath("/not-mcp"),
@@ -188,8 +202,9 @@ func TestMCPHandshakeFailure(t *testing.T) {
 func TestMissingConfigMapReference(t *testing.T) {
 	t.Parallel()
 	feature := features.New("MCPServer missing ConfigMap reference").
-		WithLabel("type", "failure").
-		WithLabel("failure", "missing-configmap").
+		WithLabel(category.Label, category.Resilience).
+		WithLabel(speed.Label, speed.Fast).
+		WithLabel(scenario.Label, scenario.Failure).
 		Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 			return f.SetupMCPServer(ctx, t, cfg, "missing-cm", false,
 				f.WithEnvFrom(corev1.EnvFromSource{
@@ -243,8 +258,9 @@ func TestMissingConfigMapReference(t *testing.T) {
 func TestMissingSecretReference(t *testing.T) {
 	t.Parallel()
 	feature := features.New("MCPServer missing Secret reference").
-		WithLabel("type", "failure").
-		WithLabel("failure", "missing-secret").
+		WithLabel(category.Label, category.Resilience).
+		WithLabel(speed.Label, speed.Fast).
+		WithLabel(scenario.Label, scenario.Failure).
 		Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 			return f.SetupMCPServer(ctx, t, cfg, "missing-secret", false,
 				f.WithEnvFrom(corev1.EnvFromSource{
@@ -298,8 +314,9 @@ func TestMissingSecretReference(t *testing.T) {
 func TestMissingStorageConfigMapReference(t *testing.T) {
 	t.Parallel()
 	feature := features.New("MCPServer missing storage ConfigMap reference").
-		WithLabel("type", "failure").
-		WithLabel("failure", "missing-storage-configmap").
+		WithLabel(category.Label, category.Resilience).
+		WithLabel(speed.Label, speed.Fast).
+		WithLabel(scenario.Label, scenario.Failure).
 		Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 			return f.SetupMCPServer(ctx, t, cfg, "missing-storage", false,
 				f.WithStorage(mcpv1alpha1.StorageMount{
@@ -346,8 +363,9 @@ func TestMissingStorageConfigMapReference(t *testing.T) {
 func TestRecoveryFromMissingConfigMap(t *testing.T) {
 	t.Parallel()
 	feature := features.New("MCPServer recovery from missing ConfigMap").
-		WithLabel("type", "recovery").
-		WithLabel("failure", "missing-configmap").
+		WithLabel(category.Label, category.Resilience).
+		WithLabel(speed.Label, speed.Moderate).
+		WithLabel(scenario.Label, scenario.Recovery).
 		Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 			return f.SetupMCPServer(ctx, t, cfg, "recovery-cm", false,
 				f.WithEnvFrom(corev1.EnvFromSource{
@@ -410,8 +428,9 @@ func TestRecoveryFromMissingConfigMap(t *testing.T) {
 func TestRecoveryFromImagePullFailure(t *testing.T) {
 	t.Parallel()
 	feature := features.New("MCPServer recovery from image pull failure").
-		WithLabel("type", "recovery").
-		WithLabel("failure", "image-pull").
+		WithLabel(category.Label, category.Resilience).
+		WithLabel(speed.Label, speed.Slow).
+		WithLabel(scenario.Label, scenario.Recovery).
 		Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 			return f.SetupMCPServer(ctx, t, cfg, "recovery-img", false,
 				f.WithImage("invalid.example.com/nonexistent/image:v0.0.1"),
@@ -429,11 +448,6 @@ func TestRecoveryFromImagePullFailure(t *testing.T) {
 			return ctx
 		}).
 		Assess("update to valid image and recover", func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
-			// Setup used an intentionally invalid image, so SetupMCPServer's
-			// built-in check never saw f.DefaultMCPServerImage; check here
-			// since this step is what actually switches to it.
-			f.SkipIfImageUnsupported(ctx, t, cfg, f.DefaultMCPServerImage)
-
 			server := f.ServerFromContext(ctx)
 			r := cfg.Client().Resources()
 
