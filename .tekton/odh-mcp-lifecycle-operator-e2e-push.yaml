@@ -9,13 +9,13 @@ metadata:
     pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
-      == "rhoai-3.5"
+      == "main"
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: opendatahub-builds
-    appstudio.openshift.io/component: odh-mcp-lifecycle-operator-ci
+    appstudio.openshift.io/component: odh-mcp-lifecycle-operator-e2e-ci
     pipelines.appstudio.openshift.io/type: build
-  name: odh-mcp-lifecycle-operator-on-push
+  name: odh-mcp-lifecycle-operator-e2e-on-push
   namespace: open-data-hub-tenant
 spec:
   params:
@@ -24,9 +24,12 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/opendatahub/odh-mcp-lifecycle-operator:odh-stable
+    value: quay.io/opendatahub/odh-mcp-lifecycle-operator-e2e:main
+  - name: additional-tags
+    value:
+    - odh-stable
   - name: dockerfile
-    value: Dockerfile.konflux
+    value: test/e2e/Dockerfile
   - name: path-context
     value: .
   - name: hermetic
@@ -43,7 +46,7 @@ spec:
     - name: pathInRepo
       value: pipeline/multi-arch-container-build.yaml
   taskRunTemplate:
-    serviceAccountName: build-pipeline-odh-mcp-lifecycle-operator-ci
+    serviceAccountName: build-pipeline-odh-mcp-lifecycle-operator-e2e-ci
   workspaces:
   - name: git-auth
     secret:
