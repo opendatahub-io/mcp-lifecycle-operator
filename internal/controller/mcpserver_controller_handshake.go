@@ -38,15 +38,23 @@ func (r *MCPServerReconciler) reconcileHandshake(
 	mcpServer *mcpv1alpha1.MCPServer,
 	mcpURL string,
 	readyCondition metav1.Condition,
+	tlsCABundleHash string,
 ) (metav1.Condition, *mcpv1alpha1.MCPServerInfo) {
 	logger := log.FromContext(ctx)
+
+	key := mcpServer.Namespace + "/" + mcpServer.Name
+	var previousHash string
+	if v, ok := r.tlsCABundleHashes.Load(key); ok {
+		previousHash = v.(string)
+	}
 
 	existingReady := meta.FindStatusCondition(mcpServer.Status.Conditions, ConditionTypeReady)
 	alreadyVerified := existingReady != nil &&
 		existingReady.Status == metav1.ConditionTrue &&
 		existingReady.Reason == ReasonAvailable &&
 		mcpServer.Status.ObservedGeneration == mcpServer.Generation &&
-		mcpServer.Status.ServerInfo != nil
+		mcpServer.Status.ServerInfo != nil &&
+		previousHash == tlsCABundleHash
 
 	// If the handshake was already verified for this generation, preserve
 	// Ready=True even if the Deployment has a transient status fluctuation
@@ -59,13 +67,38 @@ func (r *MCPServerReconciler) reconcileHandshake(
 		return readyCondition, nil
 	}
 
+	var tlsTransport *http.Transport
+	if mcpServer.Spec.Transport != nil && mcpServer.Spec.Transport.TLS != nil {
+		var tlsErr error
+		tlsTransport, tlsErr = buildTLSTransport(ctx, r.APIReader, mcpServer.Namespace, mcpServer.Spec.Transport.TLS)
+		if tlsErr != nil {
+			logger.Info("Failed to build TLS transport for handshake", "error", tlsErr)
+			cond := newCondition(
+				ConditionTypeReady,
+				metav1.ConditionFalse,
+				ReasonMCPEndpointUnavailable,
+				fmt.Sprintf("TLS configuration error: %v", tlsErr),
+				mcpServer.Generation,
+			)
+			preserveLastTransitionTime(&cond, mcpServer.Status.Conditions)
+			return cond, nil
+		}
+		if tlsTransport != nil && tlsTransport.TLSClientConfig != nil && r.TLSProfile != nil {
+			floor := tlsTransport.TLSClientConfig.MinVersion
+			r.TLSProfile(tlsTransport.TLSClientConfig)
+			if tlsTransport.TLSClientConfig.MinVersion < floor {
+				tlsTransport.TLSClientConfig.MinVersion = floor
+			}
+		}
+	}
+
 	dialer := r.MCPDialer
 	if dialer == nil {
 		dialer = r.verifyMCPEndpoint
 	}
 	dialCtx, dialCancel := context.WithTimeout(ctx, mcpHandshakeTimeout)
 	defer dialCancel()
-	info, err := dialer(dialCtx, mcpURL)
+	info, err := dialer(dialCtx, mcpURL, tlsTransport)
 	if err != nil {
 		if isHTTPAuthError(err) {
 			logger.Info("MCP endpoint returned auth error, treating as reachable", "url", mcpURL, "error", err)
@@ -96,7 +129,7 @@ func (r *MCPServerReconciler) reconcileHandshake(
 // It uses a dedicated context for the connection so that cancelling it tears
 // down the transport without sending an HTTP DELETE to the server (which some
 // MCP servers do not handle gracefully).
-func (r *MCPServerReconciler) verifyMCPEndpoint(ctx context.Context, url string) (*mcpv1alpha1.MCPServerInfo, error) {
+func (r *MCPServerReconciler) verifyMCPEndpoint(ctx context.Context, url string, httpTransport *http.Transport) (*mcpv1alpha1.MCPServerInfo, error) {
 	connCtx, connCancel := context.WithCancel(ctx)
 
 	mcpClient := mcp.NewClient(
@@ -107,9 +140,14 @@ func (r *MCPServerReconciler) verifyMCPEndpoint(ctx context.Context, url string)
 		nil,
 	)
 
+	httpClient := &http.Client{Timeout: 10 * time.Second}
+	if httpTransport != nil {
+		httpClient.Transport = httpTransport
+	}
+
 	transport := &mcp.StreamableClientTransport{
 		Endpoint:             url,
-		HTTPClient:           &http.Client{Timeout: 10 * time.Second},
+		HTTPClient:           httpClient,
 		DisableStandaloneSSE: true,
 		MaxRetries:           -1, // disable retries; the controller handles requeue
 	}
