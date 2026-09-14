@@ -1584,11 +1584,6 @@ spec:
                           Enabled controls whether the operator uses HTTPS for handshake/discovery.
                           When true, the operator connects to the MCP server using TLS.
                         type: boolean
-                      insecureSkipVerify:
-                        description: |-
-                          InsecureSkipVerify disables TLS certificate verification.
-                          For development and testing only.
-                        type: boolean
                     type: object
                 type: object
             required:

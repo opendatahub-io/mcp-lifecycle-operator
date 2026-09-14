@@ -71,12 +71,6 @@ func (r *MCPServerReconciler) validateConfig(
 		mcpServer.Spec.Transport.TLS != nil &&
 		mcpServer.Spec.Transport.TLS.Enabled {
 		tlsCfg := mcpServer.Spec.Transport.TLS
-		if tlsCfg.InsecureSkipVerify && tlsCfg.CABundleSecret != nil {
-			return &ValidationError{
-				Reason:  ReasonInvalid,
-				Message: "insecureSkipVerify and caBundleSecret are mutually exclusive",
-			}
-		}
 		if tlsCfg.CABundleSecret != nil {
 			if err := r.validateCABundleSecret(
 				ctx,

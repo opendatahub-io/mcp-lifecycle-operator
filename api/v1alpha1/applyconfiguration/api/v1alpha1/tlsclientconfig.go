@@ -31,9 +31,6 @@ type TLSClientConfigApplyConfiguration struct {
 	// under the key "ca.crt". Used to verify the MCP server's TLS certificate.
 	// When unset and enabled is true, system CA certificates are used.
 	CABundleSecret *SecretReferenceApplyConfiguration `json:"caBundleSecret,omitempty"`
-	// InsecureSkipVerify disables TLS certificate verification.
-	// For development and testing only.
-	InsecureSkipVerify *bool `json:"insecureSkipVerify,omitempty"`
 }
 
 // TLSClientConfigApplyConfiguration constructs a declarative configuration of the TLSClientConfig type for use with
@@ -55,13 +52,5 @@ func (b *TLSClientConfigApplyConfiguration) WithEnabled(value bool) *TLSClientCo
 // If called multiple times, the CABundleSecret field is set to the value of the last call.
 func (b *TLSClientConfigApplyConfiguration) WithCABundleSecret(value *SecretReferenceApplyConfiguration) *TLSClientConfigApplyConfiguration {
 	b.CABundleSecret = value
-	return b
-}
-
-// WithInsecureSkipVerify sets the InsecureSkipVerify field in the declarative configuration to the given value
-// and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the InsecureSkipVerify field is set to the value of the last call.
-func (b *TLSClientConfigApplyConfiguration) WithInsecureSkipVerify(value bool) *TLSClientConfigApplyConfiguration {
-	b.InsecureSkipVerify = &value
 	return b
 }
