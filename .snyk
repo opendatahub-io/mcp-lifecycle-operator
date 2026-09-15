@@ -4,3 +4,7 @@ version: v1.25.0
 exclude:
   code:
     - vendor/**
+    # E2E test harness: shells out to gotestsum with an argv slice (no shell),
+    # args are CI/developer-controlled. Snyk Code flags exec.Command as command
+    # injection, which is a false positive for this non-shipped test tooling.
+    - test/e2e/runner/**
