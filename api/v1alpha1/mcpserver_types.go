@@ -350,11 +350,6 @@ type TLSClientConfig struct {
 	// When unset and enabled is true, system CA certificates are used.
 	// +optional
 	CABundleSecret *SecretReference `json:"caBundleSecret,omitempty"`
-
-	// InsecureSkipVerify disables TLS certificate verification.
-	// For development and testing only.
-	// +optional
-	InsecureSkipVerify bool `json:"insecureSkipVerify,omitempty"`
 }
 
 // TransportConfig configures transport-layer settings for
