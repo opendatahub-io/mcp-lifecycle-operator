@@ -1,0 +1,2 @@
+# Intentional: user-opted TLS skip via MCPServer spec (spec.transport.tls.insecureSkipVerify)
+go-tls-bypass:internal/controller/mcpserver_controller_tls.go

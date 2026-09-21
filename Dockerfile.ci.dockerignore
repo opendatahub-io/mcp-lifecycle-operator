@@ -1,0 +1,7 @@
+# Ignore build artifacts and non-essential files
+bin/
+_output/
+.git/
+*.md
+OWNERS
+LICENSE
