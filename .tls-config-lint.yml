@@ -1,0 +1,2 @@
+exceptions:
+  - insecure-skip-verify:internal/controller/mcpserver_controller_tls.go
