@@ -11,10 +11,12 @@ ENV GOEXPERIMENT=strictfipsruntime
 ENV GOTOOLCHAIN=local
 RUN make -f Makefile-ocp.mk build-ocp GO_BUILD_ENV="GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH}"
 
-FROM --platform=$TARGETPLATFORM registry.redhat.io/ubi9/ubi-minimal@sha256:44bc70ef6e6ea9a70e353be97f4722e10358d09fbb9494ca943b2a641049690e
+FROM --platform=$TARGETPLATFORM registry.redhat.io/ubi9/ubi-minimal@sha256:44bc70ef6e6ea9a70e353be97f4722e10358d09fbb9494ca943b2a641049690e AS crypto-policy
 RUN microdnf install -y crypto-policies-scripts && \
-    update-crypto-policies --set DEFAULT:PQ --no-reload && \
-    microdnf clean all
+    update-crypto-policies --set DEFAULT:PQ --no-reload
+
+FROM --platform=$TARGETPLATFORM registry.redhat.io/ubi9/ubi-minimal@sha256:44bc70ef6e6ea9a70e353be97f4722e10358d09fbb9494ca943b2a641049690e
+COPY --from=crypto-policy /etc/crypto-policies /etc/crypto-policies
 WORKDIR /
 COPY --from=builder /workspace/manager .
 RUN mkdir /licenses
