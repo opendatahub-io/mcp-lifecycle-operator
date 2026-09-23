@@ -6,6 +6,7 @@ ARG TARGETOS=linux
 ARG TARGETARCH
 ARG TARGETPLATFORM
 
+ENV GOTOOLCHAIN=local
 USER root
 WORKDIR /workspace
 COPY go.mod go.sum ./
