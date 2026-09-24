@@ -148,6 +148,10 @@ const (
 	// eventActionInsecureTLSConfigured is the reporting action when TLS verification is disabled via spec.
 	eventActionInsecureTLSConfigured = "InsecureTLSConfigured"
 
+	// requeueDelayConflict is the delay before requeuing after a transient
+	// optimistic-lock conflict on a resource update. Such conflicts self-resolve
+	// almost immediately, so a short delay is enough to pick up the fresh object.
+	requeueDelayConflict = 1 * time.Second
 	// requeueDelayMCPHandshake is the initial delay before requeuing when an MCP handshake fails.
 	requeueDelayMCPHandshake = 10 * time.Second
 	// maxRequeueDelayMCPHandshake is the maximum requeue delay after exponential backoff.
@@ -302,6 +306,17 @@ func (r *MCPServerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	existingDeployment, err := r.reconcileDeployment(ctx, mcpServer)
 	reconcileDuration.With(prometheus.Labels{keyPhase: ReconcilePhaseDeployment}).Observe(time.Since(deploymentStart).Seconds())
 	if err != nil {
+		// Optimistic-lock conflicts are transient and self-resolve on the next
+		// reconcile. Requeue without touching status so the Available condition
+		// is not briefly flipped to DeploymentUnavailable, and requeue with a nil
+		// error so a benign conflict does not trip the reconcile error metric or
+		// log at ERROR, which would cause status thrashing and false monitoring
+		// alerts (issue #87).
+		if apierrors.IsConflict(err) {
+			logger.Info("Deployment update conflict, requeuing without status change",
+				keyName, mcpServer.Name, keyNamespace, mcpServer.Namespace)
+			return ctrl.Result{RequeueAfter: requeueDelayConflict}, nil
+		}
 		deploymentFailuresTotal.With(prometheus.Labels{
 			keyName:      mcpServer.Name,
 			keyNamespace: mcpServer.Namespace,
@@ -324,14 +339,11 @@ func (r *MCPServerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			r.emitDeploymentReconcileFailed(mcpServer, availableCondition.Message)
 		}
 
-		conditions := []*v1ac.ConditionApplyConfiguration{
+		conditions := r.appendPersistentConditions(mcpServer, []*v1ac.ConditionApplyConfiguration{
 			conditionToAC(acceptedCondition),
 			conditionToAC(availableCondition),
 			conditionToAC(verifiedCondition),
-		}
-		if gwCond := meta.FindStatusCondition(mcpServer.Status.Conditions, ConditionTypeGatewayRegistered); gwCond != nil {
-			conditions = append(conditions, conditionToAC(*gwCond))
-		}
+		}, nil)
 
 		status := acv1beta1.MCPServerStatus().
 			WithObservedGeneration(mcpServer.Generation).
@@ -375,7 +387,8 @@ func (r *MCPServerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	// Reconcile NetworkPolicy
 	networkPolicyStart := time.Now()
-	if err := r.reconcileNetworkPolicy(ctx, mcpServer); err != nil {
+	netpol, err := r.ensureNetworkPolicy(ctx, mcpServer)
+	if err != nil {
 		reconcileDuration.With(prometheus.Labels{keyPhase: ReconcilePhaseNetworkPolicy}).Observe(time.Since(networkPolicyStart).Seconds())
 		return r.handleResourceFailure(ctx, mcpServer, existingDeployment, acceptedCondition, err, resourceFailureParams{
 			counter:     networkPolicyFailuresTotal,
@@ -387,16 +400,26 @@ func (r *MCPServerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 	reconcileDuration.With(prometheus.Labels{keyPhase: ReconcilePhaseNetworkPolicy}).Observe(time.Since(networkPolicyStart).Seconds())
 
+	// Compute the NetworkPolicy posture now, from the policy we just reconciled,
+	// so a later reconcile step that fails still reports the posture backed by the
+	// applied policy rather than carrying a stale value forward. Never gates
+	// readiness (Available is computed independently below).
+	networkPolicyCondition := r.networkPolicyPostureConditionFor(
+		mcpServer, mcpServer.Generation, mcpServer.Status.Conditions, netpol)
+	recordCondition(mcpServer.Name, mcpServer.Namespace,
+		networkPolicyCondition.Type, string(networkPolicyCondition.Status), networkPolicyCondition.Reason)
+
 	// Reconcile MCPGatewayBinding
 	gatewayBindingStart := time.Now()
 	if err := r.reconcileGatewayBinding(ctx, mcpServer); err != nil {
 		reconcileDuration.With(prometheus.Labels{keyPhase: ReconcilePhaseGatewayBinding}).Observe(time.Since(gatewayBindingStart).Seconds())
 		return r.handleResourceFailure(ctx, mcpServer, existingDeployment, acceptedCondition, err, resourceFailureParams{
-			counter:     gatewayBindingFailuresTotal,
-			reason:      ReasonGatewayNotRegistered,
-			resource:    "MCPGatewayBinding",
-			isDuplicate: duplicateGatewayBindingUnavailable,
-			emitEvent:   r.emitGatewayBindingReconcileFailed,
+			counter:              gatewayBindingFailuresTotal,
+			reason:               ReasonGatewayNotRegistered,
+			resource:             "MCPGatewayBinding",
+			isDuplicate:          duplicateGatewayBindingUnavailable,
+			emitEvent:            r.emitGatewayBindingReconcileFailed,
+			networkPolicyPosture: &networkPolicyCondition,
 		})
 	}
 	reconcileDuration.With(prometheus.Labels{keyPhase: ReconcilePhaseGatewayBinding}).Observe(time.Since(gatewayBindingStart).Seconds())
@@ -466,6 +489,11 @@ func (r *MCPServerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		WithReadyReplicas(existingDeployment.Status.ReadyReplicas)
 
 	applyGatewayStatusToAC(status, gwStatus, acceptedCondition, availableCondition, verifiedCondition)
+
+	// Surface the NetworkPolicy posture (computed right after the NetworkPolicy was
+	// reconciled above) as an informational, administrator-visible condition,
+	// appended to the same apply so it does not prune the other conditions.
+	status.WithConditions(conditionToAC(networkPolicyCondition))
 
 	status = withAddressWhenVerified(status, verifiedCondition, mcpURL)
 
@@ -593,14 +621,11 @@ func (r *MCPServerReconciler) reconcilePermanentValidationError(
 
 	prevAccepted := meta.FindStatusCondition(mcpServer.Status.Conditions, ConditionTypeAccepted)
 
-	conditions := []*v1ac.ConditionApplyConfiguration{
+	conditions := r.appendPersistentConditions(mcpServer, []*v1ac.ConditionApplyConfiguration{
 		conditionToAC(acceptedCondition),
 		conditionToAC(availableCondition),
 		conditionToAC(verifiedCondition),
-	}
-	if gwCond := meta.FindStatusCondition(mcpServer.Status.Conditions, ConditionTypeGatewayRegistered); gwCond != nil {
-		conditions = append(conditions, conditionToAC(*gwCond))
-	}
+	}, nil)
 
 	status := acv1beta1.MCPServerStatus().
 		WithObservedGeneration(mcpServer.Generation).
@@ -725,6 +750,11 @@ type resourceFailureParams struct {
 	resource    string
 	isDuplicate func([]metav1.Condition, string) bool
 	emitEvent   func(*mcpv1beta1.MCPServer, string)
+	// networkPolicyPosture, when non-nil, is written as the NetworkPolicy posture
+	// condition instead of carrying the last observed value forward. Set it only on
+	// failure paths that run after the NetworkPolicy has already been reconciled
+	// successfully this pass, so the reported posture matches the applied policy.
+	networkPolicyPosture *metav1.Condition
 }
 
 func (r *MCPServerReconciler) handleResourceFailure(
@@ -736,6 +766,17 @@ func (r *MCPServerReconciler) handleResourceFailure(
 	params resourceFailureParams,
 ) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
+
+	// Optimistic-lock conflicts are transient and self-resolve on the next
+	// reconcile. Requeue without touching status so the Available condition is
+	// not briefly flipped to False, and requeue with a nil error so a benign
+	// conflict does not trip the reconcile error metric or log at ERROR, which
+	// would cause status thrashing and false monitoring alerts (issue #87).
+	if apierrors.IsConflict(reconcileErr) {
+		logger.Info("Resource update conflict, requeuing without status change",
+			"resource", params.resource, keyName, mcpServer.Name, keyNamespace, mcpServer.Namespace)
+		return ctrl.Result{RequeueAfter: requeueDelayConflict}, nil
+	}
 
 	params.counter.With(prometheus.Labels{
 		keyName:      mcpServer.Name,
@@ -760,14 +801,11 @@ func (r *MCPServerReconciler) handleResourceFailure(
 		params.emitEvent(mcpServer, availableCondition.Message)
 	}
 
-	conditions := []*v1ac.ConditionApplyConfiguration{
+	conditions := r.appendPersistentConditions(mcpServer, []*v1ac.ConditionApplyConfiguration{
 		conditionToAC(acceptedCondition),
 		conditionToAC(availableCondition),
 		conditionToAC(verifiedCondition),
-	}
-	if gwCond := meta.FindStatusCondition(mcpServer.Status.Conditions, ConditionTypeGatewayRegistered); gwCond != nil {
-		conditions = append(conditions, conditionToAC(*gwCond))
-	}
+	}, params.networkPolicyPosture)
 
 	status := acv1beta1.MCPServerStatus().
 		WithObservedGeneration(mcpServer.Generation).
@@ -856,6 +894,36 @@ func (r *MCPServerReconciler) applyStatus(
 		client.FieldOwner(fieldManager),
 		client.ForceOwnership,
 	)
+}
+
+// appendPersistentConditions re-adds the status conditions that must survive
+// every apply. applyStatus uses Server-Side Apply under a single field manager,
+// so any condition that manager previously owned but omits from a later apply is
+// pruned. GatewayRegistered is always carried forward from existing status.
+//
+// The NetworkPolicy posture is handled the same way by default: it is computed
+// fresh only after the NetworkPolicy has actually been reconciled, so on a
+// failure or short-circuit path (e.g. a reconcile that bails on invalid config
+// before the NetworkPolicy runs) recomputing it from the desired policy would
+// advertise a posture that no applied policy backs. When the NetworkPolicy did
+// reconcile successfully this pass but a later step failed, the caller passes the
+// freshly computed posture in freshPosture so the reported value matches the
+// applied policy instead of lagging until the next successful reconcile.
+func (r *MCPServerReconciler) appendPersistentConditions(
+	mcpServer *mcpv1beta1.MCPServer,
+	conditions []*v1ac.ConditionApplyConfiguration,
+	freshPosture *metav1.Condition,
+) []*v1ac.ConditionApplyConfiguration {
+	if gwCond := meta.FindStatusCondition(mcpServer.Status.Conditions, ConditionTypeGatewayRegistered); gwCond != nil {
+		conditions = append(conditions, conditionToAC(*gwCond))
+	}
+	if freshPosture != nil {
+		conditions = append(conditions, conditionToAC(*freshPosture))
+	} else if postureCond := meta.FindStatusCondition(
+		mcpServer.Status.Conditions, ConditionTypeNetworkPolicyRestricted); postureCond != nil {
+		conditions = append(conditions, conditionToAC(*postureCond))
+	}
+	return conditions
 }
 
 // SetupWithManager sets up the controller with the Manager.

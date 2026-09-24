@@ -74,8 +74,6 @@ func TestMain(m *testing.M) {
 		f.BusyboxImage,
 	))
 
-	f.RegisterDSCLifecycle(testenv)
-
 	// Create a unique namespace before each test, delete it after.
 	testenv.BeforeEachTest(func(ctx context.Context, cfg *envconf.Config, t *testing.T) (context.Context, error) {
 		f.MustDiscoverOperatorOnce(ctx, cfg, t)
