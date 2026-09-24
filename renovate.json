@@ -1,33 +1,23 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "assigneesFromCodeOwners": true,
-  "automergeStrategy": "auto",
-  "automergeType": "pr",
-  "prConcurrentLimit": 5,
-  "ignoreTests": false,
-  "rebaseLabel": "needs-rebase",
-  "rebaseWhen": "behind-base-branch",
-  "recreateWhen": "always",
+  "extends": [
+    "github>opendatahub-io/renovate-config",
+    "github>konflux-ci/mintmaker-presets:refresh-rpm-lockfiles"
+  ],
   "commitMessagePrefix": "[{{baseBranch}}]",
   "enabledManagers": ["tekton", "gomod", "dockerfile"],
   "ignorePaths": ["Dockerfile", "/docs/**"],
-  "postUpdateOptions": [
-    "gomodTidy",
-    "gomodUpdateImportPaths",
-    "gomodVendor"
-  ],
+  "postUpdateOptions": ["gomodTidy"],
   "packageRules": [
     {
-      "matchManagers": ["tekton"],
-      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
-      "groupName": "tekton dependencies",
-      "automerge": true,
-      "description": "Group all minor tekton dependencies",
-      "addLabels": ["jira/valid-reference", "lgtm", "approved"]
+      "description": "Disable gomod on main — Go deps come from upstream",
+      "matchManagers": ["gomod"],
+      "matchBaseBranches": ["main"],
+      "enabled": false
     },
     {
       "matchManagers": ["dockerfile"],
-      "matchFileNames": ["Dockerfile.ci", "Dockerfile.konflux"],
+      "matchFileNames": ["Dockerfile.konflux"],
       "automerge": true,
       "addLabels": ["jira/valid-reference", "lgtm", "approved"]
     },
@@ -48,8 +38,5 @@
       "matchDepTypes": ["indirect"],
       "enabled": false
     }
-  ],
-  "vulnerabilityAlerts": {
-    "enabled": true
-  }
+  ]
 }
