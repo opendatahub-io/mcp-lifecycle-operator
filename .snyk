@@ -1,17 +1,17 @@
 # Snyk (https://snyk.io) policy file
-# ignores vulnerabilities in vendored dependencies
+# Snyk Code exclusions for vendored code, test code, and reviewed exceptions.
 version: v1.25.0
 exclude:
   code:
     - vendor/**
+    # Go test files are not compiled into the shipped operator. TLS tests
+    # deliberately use an old protocol version and bypass verification of
+    # in-memory self-signed certificates to exercise security behavior.
+    - "*_test.go"
     # E2E test harness: shells out to gotestsum with an argv slice (no shell),
     # args are CI/developer-controlled. Snyk Code flags exec.Command as command
     # injection, which is a false positive for this non-shipped test tooling.
     - test/e2e/runner/**
-    # The default E2E metrics endpoint uses controller-runtime's ephemeral
-    # self-signed certificate. The test cannot retrieve that pod-local CA, so
-    # it intentionally disables verification on a localhost port-forward.
-    - test/e2e/manager_test.go
     # This file contains the explicitly user-selected insecureSkipVerify escape
     # hatch. It enforces TLS 1.2 and emits a Warning event before use; Snyk Code
     # has no line-level policy exclusion for this intentional API behavior.
