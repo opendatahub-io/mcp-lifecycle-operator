@@ -5,14 +5,18 @@
     "github>konflux-ci/mintmaker-presets:refresh-rpm-lockfiles"
   ],
   "commitMessagePrefix": "[{{baseBranch}}]",
-  "enabledManagers": ["tekton", "gomod", "dockerfile"],
   "ignorePaths": ["Dockerfile", "/docs/**"],
   "postUpdateOptions": ["gomodTidy"],
+  "dockerfile": {
+    "pinDigests": true,
+    "includePaths": ["Dockerfile.konflux"]
+  },
   "packageRules": [
     {
-      "description": "Disable gomod on main — Go deps come from upstream",
+      "description": "Disable gomod on main — deps come from upstream",
       "matchManagers": ["gomod"],
       "matchBaseBranches": ["main"],
+      "groupName": "Go module updates",
       "enabled": false
     },
     {
@@ -20,23 +24,6 @@
       "matchFileNames": ["Dockerfile.konflux"],
       "automerge": true,
       "addLabels": ["jira/valid-reference", "lgtm", "approved"]
-    },
-    {
-      "matchManagers": ["gomod"],
-      "matchUpdateTypes": ["patch", "pin", "digest"],
-      "groupName": "k8s.io dependencies",
-      "matchPackageNames": ["k8s.io/{/,}**"]
-    },
-    {
-      "matchManagers": ["gomod"],
-      "matchUpdateTypes": ["patch", "pin", "digest"],
-      "groupName": "sigs.k8s.io dependencies",
-      "matchPackageNames": ["sigs.k8s.io/{/,}**"]
-    },
-    {
-      "matchManagers": ["gomod"],
-      "matchDepTypes": ["indirect"],
-      "enabled": false
     }
   ]
 }
