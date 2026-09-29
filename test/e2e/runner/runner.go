@@ -11,6 +11,7 @@ import (
 
 const (
 	prefix              = "[e2e-run] "
+	defaultComponent    = "mcp-lifecycle-operator"
 	defaultTest2JSONBin = "/usr/local/bin/test2json"
 	defaultArtifactsDir = "/artifacts"
 	defaultResultsDir   = "e2e-results"
@@ -59,37 +60,24 @@ type Result struct {
 
 // Runner executes e2e tests via gotestsum / test2json.
 type Runner struct {
-	stdout   io.Writer
-	stderr   io.Writer
-	selfPath string
-	packages []TestPackage
+	Stdout       io.Writer
+	Stderr       io.Writer
+	selfPath     string
+	Packages     []TestPackage
+	ArtifactsDir string
+	ResultsDir   string
+	GotestsumBin string
+	Verbosity    string
+	Test2JSONBin string
+	TestCount    string
+	Component    string
+	RepoAbbr     string
+	ReportMode   string
 }
 
-// New returns a Runner that writes to os.Stdout / os.Stderr.
+// New returns an uninitialized, caller-configurable Runner.
 func New() *Runner {
-	return &Runner{stdout: os.Stdout, stderr: os.Stderr}
-}
-
-func (r *Runner) WithStdout(w io.Writer) *Runner {
-	r.stdout = w
-	return r
-}
-
-func (r *Runner) WithStderr(w io.Writer) *Runner {
-	r.stderr = w
-	return r
-}
-
-// WithSelf sets the path to this binary, used as the --raw-command target.
-func (r *Runner) WithSelf(path string) *Runner {
-	r.selfPath = path
-	return r
-}
-
-// WithPackages sets the test packages for Exec mode.
-func (r *Runner) WithPackages(pkgs []TestPackage) *Runner {
-	r.packages = pkgs
-	return r
+	return &Runner{}
 }
 
 // Run routes between orchestrator and executor modes.
@@ -104,6 +92,11 @@ func (r *Runner) WithPackages(pkgs []TestPackage) *Runner {
 //	         ├─ test2json -t -p e2e /e2e/e2e-tests -test.count=1 ...
 //	         └─ test2json -t -p lifecycle /e2e/lifecycle-tests -test.count=1 ...
 func (r *Runner) Run(args []string) Result {
+	if err := r.initialize(); err != nil {
+		r.logf("invalid runner configuration: %v", err)
+		return Result{ExitCode: 1}
+	}
+
 	if err := r.initPackages(); err != nil {
 		r.logf("invalid testPackages: %v", err)
 		return Result{ExitCode: 1}
@@ -116,25 +109,82 @@ func (r *Runner) Run(args []string) Result {
 	return r.orchestrate(args)
 }
 
+func (r *Runner) initialize() error {
+	if r.Stdout == nil {
+		r.Stdout = os.Stdout
+	}
+	if r.Stderr == nil {
+		r.Stderr = os.Stderr
+	}
+	if r.selfPath == "" {
+		r.selfPath = os.Args[0]
+	}
+	if r.ArtifactsDir == "" {
+		r.ArtifactsDir = defaultArtifactsDir
+	}
+	if r.ResultsDir == "" {
+		r.ResultsDir = defaultResultsDir
+	}
+	if r.GotestsumBin == "" {
+		r.GotestsumBin = defaultGotestsumBin
+	}
+	if r.Verbosity == "" {
+		r.Verbosity = "testname"
+	}
+	if r.Test2JSONBin == "" {
+		r.Test2JSONBin = defaultTest2JSONBin
+	}
+	if r.TestCount == "" {
+		r.TestCount = "1"
+	}
+	if r.Component == "" {
+		r.Component = defaultComponent
+	}
+	if r.ReportMode == "" {
+		r.ReportMode = "rhoai"
+	}
+
+	r.ArtifactsDir = envOr("ARTIFACTS", r.ArtifactsDir)
+	r.ResultsDir = envOr("E2E_RESULTS_DIR", r.ResultsDir)
+	r.GotestsumBin = envOr("E2E_GOTESTSUM_BIN", r.GotestsumBin)
+	r.Verbosity = envOr("E2E_GO_TEST_VERBOSITY", r.Verbosity)
+	r.Component = envOr("E2E_COMPONENT", r.Component)
+	if r.RepoAbbr == "" {
+		r.RepoAbbr = deriveRepoAbbr(r.Component)
+	}
+	r.RepoAbbr = envOr("E2E_REPO_ABBR", r.RepoAbbr)
+	r.ReportMode = envOr("E2E_JUNIT_REPORT_MODE", r.ReportMode)
+	r.Test2JSONBin = envOr("E2E_TEST2JSON_BIN", r.Test2JSONBin)
+	r.TestCount = envOr("E2E_COUNT", r.TestCount)
+
+	reportMode, err := parseJUnitReportMode(r.ReportMode)
+	if err != nil {
+		return err
+	}
+	r.ReportMode = string(reportMode)
+	return nil
+}
+
 func (r *Runner) initPackages() error {
-	if r.packages != nil {
+	if r.Packages != nil {
 		return nil
 	}
 	pkgs, err := ParsePackages(TestPackages)
 	if err != nil {
 		return err
 	}
-	r.packages = pkgs
+	r.Packages = pkgs
 	return nil
 }
 
 func (r *Runner) orchestrate(args []string) Result {
-	artifactsDir := envOr("ARTIFACTS", defaultArtifactsDir)
-	resultsDir := filepath.Join(artifactsDir, envOr("E2E_RESULTS_DIR", defaultResultsDir))
-	gotestsumBin := envOr("E2E_GOTESTSUM_BIN", defaultGotestsumBin)
-	goTestVerbosity := envOr("GO_TEST_VERBOSITY", "testname")
-	junitProjectName := envOr("E2E_JUNIT_PROJECT_NAME", "mcp-lifecycle-operator")
+	reportConfig := junitReportConfig{
+		mode:      junitReportMode(r.ReportMode),
+		component: r.Component,
+		repoAbbr:  r.RepoAbbr,
+	}
 
+	resultsDir := filepath.Join(r.ArtifactsDir, r.ResultsDir)
 	junitFile := filepath.Join(resultsDir, "junit.xml")
 	jsonFile := filepath.Join(resultsDir, "log.jsonl")
 
@@ -152,19 +202,19 @@ func (r *Runner) orchestrate(args []string) Result {
 	cmdArgs = append(cmdArgs,
 		"--raw-command",
 		"--junitfile", junitFile,
-		"--junitfile-project-name", junitProjectName,
+		"--junitfile-project-name", r.Component,
 		"--jsonfile", jsonFile,
-		"--format", goTestVerbosity,
+		"--format", r.Verbosity,
 		"--",
 		selfPath, "exec",
 	)
 	cmdArgs = append(cmdArgs, args...)
 
-	r.logf("running: %s %s", gotestsumBin, strings.Join(cmdArgs, " "))
+	r.logf("running: %s %s", r.GotestsumBin, strings.Join(cmdArgs, " "))
 
-	cmd := exec.Command(gotestsumBin, cmdArgs...)
-	cmd.Stdout = r.stdout
-	cmd.Stderr = r.stderr
+	cmd := exec.Command(r.GotestsumBin, cmdArgs...)
+	cmd.Stdout = r.Stdout
+	cmd.Stderr = r.Stderr
 	cmd.Stdin = os.Stdin
 
 	result := Result{JUnitFile: junitFile, JSONFile: jsonFile}
@@ -172,13 +222,30 @@ func (r *Runner) orchestrate(args []string) Result {
 	if err := cmd.Run(); err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			result.ExitCode = exitErr.ExitCode()
-			r.logf("junit: %s", junitFile)
-			r.logf("jsonl: %s", jsonFile)
+		} else {
+			r.logf("failed to run gotestsum: %v", err)
+			result.ExitCode = 1
 			return result
 		}
-		r.logf("failed to run gotestsum: %v", err)
+	}
+
+	if _, err := os.Stat(junitFile); os.IsNotExist(err) {
+		if result.ExitCode == 0 {
+			r.logf("gotestsum succeeded but JUnit report is missing: %s", junitFile)
+			result.ExitCode = 1
+		}
+		return result
+	} else if err != nil {
+		r.logf("failed to inspect JUnit report %s: %v", junitFile, err)
 		result.ExitCode = 1
 		return result
+	}
+
+	if err := rewriteJUnitReport(junitFile, reportConfig); err != nil {
+		r.logf("failed to rewrite JUnit report: %v", err)
+		if result.ExitCode == 0 {
+			result.ExitCode = 1
+		}
 	}
 
 	r.logf("junit: %s", junitFile)
@@ -186,30 +253,43 @@ func (r *Runner) orchestrate(args []string) Result {
 	return result
 }
 
-func (r *Runner) execPackages(args []string) int {
-	test2jsonBin := envOr("E2E_TEST2JSON_BIN", defaultTest2JSONBin)
-	testCount := envOr("E2E_COUNT", "1")
+func deriveRepoAbbr(component string) string {
+	parts := strings.Split(component, "-")
+	var abbreviation strings.Builder
+	abbreviation.WriteString(parts[0])
+	for _, part := range parts[1:] {
+		if part != "" {
+			_ = abbreviation.WriteByte(part[0])
+		}
+	}
+	return abbreviation.String()
+}
 
+func (r *Runner) execPackages(args []string) int {
 	testArgs := make([]string, 0, 2+len(args))
-	testArgs = append(testArgs, "-test.count="+testCount, "-test.v=test2json")
+	testArgs = append(testArgs, "-test.count="+r.TestCount, "-test.v=test2json")
 	testArgs = append(testArgs, args...)
 
 	worstCode := 0
 
-	for _, pkg := range r.packages {
+	for _, pkg := range r.Packages {
 		cmdArgs := make([]string, 0, 4+len(testArgs))
 		cmdArgs = append(cmdArgs, "-t", "-p", pkg.Name, pkg.Binary)
 		cmdArgs = append(cmdArgs, testArgs...)
 
-		r.logf("running: %s %s", test2jsonBin, strings.Join(cmdArgs, " "))
+		r.logf("running: %s %s", r.Test2JSONBin, strings.Join(cmdArgs, " "))
 
-		cmd := exec.Command(test2jsonBin, cmdArgs...)
-		cmd.Stdout = r.stdout
-		cmd.Stderr = r.stderr
+		cmd := exec.Command(r.Test2JSONBin, cmdArgs...)
+		cmd.Stdout = r.Stdout
+		cmd.Stderr = r.Stderr
 
 		if err := cmd.Run(); err != nil {
 			if exitErr, ok := err.(*exec.ExitError); ok {
-				if code := exitErr.ExitCode(); code > worstCode {
+				code := exitErr.ExitCode()
+				if code <= 0 {
+					code = 1
+				}
+				if code > worstCode {
 					worstCode = code
 				}
 			} else {
@@ -225,7 +305,7 @@ func (r *Runner) execPackages(args []string) int {
 }
 
 func (r *Runner) logf(format string, args ...any) {
-	_, _ = fmt.Fprintf(r.stderr, prefix+format+"\n", args...)
+	_, _ = fmt.Fprintf(r.Stderr, prefix+format+"\n", args...)
 }
 
 func envOr(key, fallback string) string {
