@@ -99,8 +99,30 @@ func flattenSuites(root *xmlElement, config junitReportConfig) error {
 	aggregate := &xmlElement{start: startElement(testSuiteElement)}
 	if len(suites) > 0 {
 		aggregate.start = xml.CopyToken(suites[0].start).(xml.StartElement)
+		var properties *xmlElement
 		for _, suite := range suites {
-			aggregate.nodes = append(aggregate.nodes, suite.nodes...)
+			for _, node := range suite.nodes {
+				if node.element == nil || node.element.start.Name.Local != "properties" {
+					aggregate.nodes = append(aggregate.nodes, node)
+					continue
+				}
+				if properties == nil {
+					properties = &xmlElement{start: xml.CopyToken(node.element.start).(xml.StartElement)}
+				}
+				properties.nodes = append(properties.nodes, node.element.nodes...)
+			}
+		}
+		if properties != nil {
+			insertAt := len(aggregate.nodes)
+			for index, node := range aggregate.nodes {
+				if node.element != nil && node.element.start.Name.Local == "testcase" {
+					insertAt = index
+					break
+				}
+			}
+			aggregate.nodes = append(aggregate.nodes, xmlNode{})
+			copy(aggregate.nodes[insertAt+1:], aggregate.nodes[insertAt:])
+			aggregate.nodes[insertAt] = xmlNode{element: properties}
 		}
 		if err := aggregateCounters(aggregate, suites); err != nil {
 			return err
