@@ -6,19 +6,14 @@
   ],
   "commitMessagePrefix": "[{{baseBranch}}]",
   "ignorePaths": ["Dockerfile", "/docs/**"],
-  "postUpdateOptions": ["gomodTidy"],
+  "gomod": {
+    "enabled": false
+  },
   "dockerfile": {
     "pinDigests": true,
     "includePaths": ["Dockerfile.konflux"]
   },
   "packageRules": [
-    {
-      "description": "Disable gomod on main — deps come from upstream",
-      "matchManagers": ["gomod"],
-      "matchBaseBranches": ["main"],
-      "groupName": "Go module updates",
-      "enabled": false
-    },
     {
       "matchManagers": ["dockerfile"],
       "matchFileNames": ["Dockerfile.konflux"],
