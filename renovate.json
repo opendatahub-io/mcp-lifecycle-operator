@@ -10,15 +10,13 @@
     "enabled": false
   },
   "dockerfile": {
-    "pinDigests": true,
     "includePaths": ["Dockerfile.konflux"]
   },
   "packageRules": [
     {
       "matchManagers": ["dockerfile"],
       "matchFileNames": ["Dockerfile.konflux"],
-      "automerge": true,
-      "addLabels": ["jira/valid-reference", "lgtm", "approved"]
+      "pinDigests": true
     }
   ]
 }
