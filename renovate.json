@@ -9,9 +9,6 @@
   "gomod": {
     "enabled": false
   },
-  "dockerfile": {
-    "includePaths": ["Dockerfile.konflux"]
-  },
   "packageRules": [
     {
       "matchManagers": ["dockerfile"],
