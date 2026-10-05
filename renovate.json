@@ -9,6 +9,9 @@
   "gomod": {
     "enabled": false
   },
+  "dockerfile": {
+    "schedule": ["at any time"]
+  },
   "packageRules": [
     {
       "matchManagers": ["dockerfile"],
