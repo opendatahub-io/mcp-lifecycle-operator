@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/util/retry"
 
 	cr "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
@@ -119,21 +120,16 @@ func MaybeEnsureDSCManaged(ctx context.Context, cl cr.Client) (DSCState, error) 
 		"spec", "components", componentPath, "managementState",
 	)
 	state.OriginalState = currentState
-	log.Printf("[e2e-dsc] DataScienceCluster %q mcplifecycleoperator.managementState = %q", dscDefaultName, currentState)
+	log.Printf("[e2e-dsc] observed mcplifecycleoperator.managementState = %q on %q before tests", currentState, dscDefaultName)
 
 	if currentState != stateManaged {
-		if err := unstructured.SetNestedField(
-			dsc.Object, stateManaged,
-			"spec", "components", componentPath, "managementState",
-		); err != nil {
-			return state, fmt.Errorf("failed to set managementState: %w", err)
-		}
-		if err := cl.Update(ctx, dsc); err != nil {
+		log.Printf("[e2e-dsc] enabling mcplifecycleoperator (setting to %q); will restore to %q after tests", stateManaged, currentState)
+		if err := setManagementState(ctx, cl, dscDefaultName, stateManaged); err != nil {
 			return state, fmt.Errorf("failed to patch DataScienceCluster to Managed: %w", err)
 		}
-		log.Printf("[e2e-dsc] patched mcplifecycleoperator to Managed")
+		log.Printf("[e2e-dsc] mcplifecycleoperator set to Managed")
 	} else {
-		log.Printf("[e2e-dsc] already Managed, no patch needed")
+		log.Printf("[e2e-dsc] mcplifecycleoperator already Managed before tests; leaving as-is and will not restore")
 	}
 
 	log.Printf("[e2e-dsc] waiting for %s condition (timeout %s)", condMCPLifecycleOperator, dscReadyWait)
@@ -190,18 +186,8 @@ func MaybeRestoreDSCState(ctx context.Context, cl cr.Client, state DSCState) err
 	}
 	if state.OriginalState == stateManaged {
 		// Was already Managed before tests, nothing to restore.
+		log.Printf("[e2e-dsc] mcplifecycleoperator was already Managed before tests; nothing to restore")
 		return nil
-	}
-
-	dsc := &unstructured.Unstructured{}
-	dsc.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "datasciencecluster.opendatahub.io",
-		Version: "v2",
-		Kind:    dscKind,
-	})
-
-	if err := cl.Get(ctx, cr.ObjectKey{Name: state.DSCName}, dsc); err != nil {
-		return fmt.Errorf("failed to get DataScienceCluster for restore: %w", err)
 	}
 
 	restoreState := state.OriginalState
@@ -209,18 +195,32 @@ func MaybeRestoreDSCState(ctx context.Context, cl cr.Client, state DSCState) err
 		restoreState = stateRemoved
 	}
 
-	if err := unstructured.SetNestedField(
-		dsc.Object, restoreState,
-		"spec", "components", componentPath, "managementState",
-	); err != nil {
-		return fmt.Errorf("failed to set managementState for restore: %w", err)
-	}
-
-	if err := cl.Update(ctx, dsc); err != nil {
+	if err := setManagementState(ctx, cl, state.DSCName, restoreState); err != nil {
 		return fmt.Errorf("failed to restore DataScienceCluster state to %q: %w", restoreState, err)
 	}
 	log.Printf("[e2e-dsc] restored mcplifecycleoperator to %q", restoreState)
 	return nil
+}
+
+// setManagementState patches the mcplifecycleoperator managementState to the
+// desired value. It retries on optimistic-concurrency conflicts by re-fetching
+// the latest DataScienceCluster before each attempt, so a concurrent writer
+// updating default-dsc between our Get and Update does not fail the whole run.
+func setManagementState(ctx context.Context, cl cr.Client, name, desired string) error {
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		dsc := &unstructured.Unstructured{}
+		dsc.SetGroupVersionKind(dscGVK())
+		if err := cl.Get(ctx, cr.ObjectKey{Name: name}, dsc); err != nil {
+			return err
+		}
+		if err := unstructured.SetNestedField(
+			dsc.Object, desired,
+			"spec", "components", componentPath, "managementState",
+		); err != nil {
+			return err
+		}
+		return cl.Update(ctx, dsc)
+	})
 }
 
 func dscGVK() schema.GroupVersionKind {
