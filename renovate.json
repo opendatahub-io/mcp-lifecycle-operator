@@ -5,10 +5,8 @@
     "github>konflux-ci/mintmaker-presets:refresh-rpm-lockfiles"
   ],
   "commitMessagePrefix": "[{{baseBranch}}]",
+  "enabledManagers": ["dockerfile", "tekton", "rpm-lockfile"],
   "ignorePaths": ["/docs/**"],
-  "gomod": {
-    "enabled": false
-  },
   "dockerfile": {
     "schedule": ["at any time"]
   },
