@@ -408,14 +408,14 @@ func WaitForEndpointsReady(ctx context.Context, t *testing.T, cfg *envconf.Confi
 }
 
 // CreateGatewayConfigMap creates a ConfigMap with gateway integration settings.
-// It copies all entries from configData except "gateway-class", which is not a
-// ConfigMap key but a provider registration detail.
+// It copies all entries from configData except the gateway-class key, which is
+// not a ConfigMap key but a provider registration detail.
 func CreateGatewayConfigMap(ctx context.Context, t *testing.T, cfg *envconf.Config,
 	name, namespace string, configData map[string]string) {
 	t.Helper()
 	data := make(map[string]string, len(configData))
 	for k, v := range configData {
-		if k == "gateway-class" {
+		if k == configKeyGatewayClass {
 			continue
 		}
 		data[k] = v
@@ -602,4 +602,100 @@ func UpdateWithRetry[T k8s.Object](ctx context.Context, t *testing.T, r *resourc
 		t.Fatalf("failed to update %s/%s after retries: %v",
 			obj.GetNamespace(), obj.GetName(), err)
 	}
+}
+
+// DumpDiagnostics logs cluster state for debugging when a test fails.
+func DumpDiagnostics(ctx context.Context, t *testing.T, cfg *envconf.Config, ns string) {
+	t.Helper()
+	t.Log("=== DIAGNOSTICS DUMP (test failed) ===")
+	r := cfg.Client().Resources(ns)
+
+	var servers mcpv1alpha1.MCPServerList
+	if err := r.List(ctx, &servers); err == nil {
+		for _, s := range servers.Items {
+			t.Logf("MCPServer %s/%s generation=%d observedGeneration=%d",
+				s.Namespace, s.Name, s.Generation, s.Status.ObservedGeneration)
+			if s.Status.Address != nil {
+				t.Logf("  address: %s", s.Status.Address.URL)
+			}
+			for _, c := range s.Status.Conditions {
+				t.Logf("  condition %s=%s reason=%s message=%q",
+					c.Type, c.Status, c.Reason, c.Message)
+			}
+		}
+	}
+
+	var bindings mcpv1alpha1.MCPGatewayBindingList
+	if err := r.List(ctx, &bindings); err == nil {
+		for _, b := range bindings.Items {
+			t.Logf("MCPGatewayBinding %s/%s provider=%s mcpServerRef=%s",
+				b.Namespace, b.Name, b.Spec.Provider, b.Spec.MCPServerRef)
+			for _, c := range b.Status.Conditions {
+				t.Logf("  condition %s=%s reason=%s message=%q",
+					c.Type, c.Status, c.Reason, c.Message)
+			}
+		}
+	}
+
+	var httpRoutes gatewayv1.HTTPRouteList
+	if err := r.List(ctx, &httpRoutes); err == nil {
+		for _, hr := range httpRoutes.Items {
+			t.Logf("HTTPRoute %s/%s parentRefs=%d rules=%d",
+				hr.Namespace, hr.Name, len(hr.Spec.ParentRefs), len(hr.Spec.Rules))
+		}
+	}
+
+	var deployments appsv1.DeploymentList
+	if err := r.List(ctx, &deployments); err == nil {
+		for _, d := range deployments.Items {
+			desired := int32(1)
+			if d.Spec.Replicas != nil {
+				desired = *d.Spec.Replicas
+			}
+			t.Logf("Deployment %s replicas=%d/%d available=%d",
+				d.Name, d.Status.ReadyReplicas, desired, d.Status.AvailableReplicas)
+		}
+	}
+
+	var pods corev1.PodList
+	if err := r.List(ctx, &pods); err == nil {
+		for _, p := range pods.Items {
+			t.Logf("Pod %s phase=%s", p.Name, p.Status.Phase)
+			for _, cs := range p.Status.ContainerStatuses {
+				t.Logf("  container %s ready=%v restarts=%d", cs.Name, cs.Ready, cs.RestartCount)
+				if cs.State.Waiting != nil {
+					t.Logf("    waiting: %s - %s", cs.State.Waiting.Reason, cs.State.Waiting.Message)
+				}
+			}
+		}
+	}
+
+	var events corev1.EventList
+	if err := r.List(ctx, &events); err == nil {
+		for _, e := range events.Items {
+			t.Logf("Event %s %s/%s: %s - %s",
+				e.Type, e.InvolvedObject.Kind, e.InvolvedObject.Name,
+				e.Reason, e.Message)
+		}
+	}
+
+	t.Log("--- controller-manager logs ---")
+	opRef := MustDiscoverOperatorOnce(ctx, cfg, t)
+	controllerNs := opRef.Namespace
+	rCtrl := cfg.Client().Resources(controllerNs)
+	var ctrlPods corev1.PodList
+	if err := rCtrl.List(ctx, &ctrlPods); err == nil {
+		for _, p := range ctrlPods.Items {
+			if p.Status.Phase == corev1.PodRunning {
+				logs := PodLogs(ctx, t, cfg, p.Name, controllerNs)
+				lines := strings.Split(logs, "\n")
+				if len(lines) > 50 {
+					lines = lines[len(lines)-50:]
+				}
+				t.Logf("Pod %s (last %d lines):\n%s", p.Name, len(lines), strings.Join(lines, "\n"))
+			}
+		}
+	}
+
+	t.Log("=== END DIAGNOSTICS ===")
 }

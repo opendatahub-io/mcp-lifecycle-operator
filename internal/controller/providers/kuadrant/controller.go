@@ -49,14 +49,19 @@ import (
 )
 
 func init() {
-	providers.Register(ProviderName, Setup)
+	providers.Register(ProviderName, providers.Registration{
+		Factory: Setup,
+		RequiredCRDs: []schema.GroupVersionKind{
+			{Group: gatewayv1.GroupName, Version: "v1", Kind: "HTTPRoute"},
+			{Group: gatewayv1.GroupName, Version: "v1", Kind: "Gateway"},
+			{Group: kuadrantapi.SchemeGroupVersion.Group, Version: kuadrantapi.SchemeGroupVersion.Version, Kind: "MCPServerRegistration"},
+			{Group: kuadrantapi.SchemeGroupVersion.Group, Version: kuadrantapi.SchemeGroupVersion.Version, Kind: "MCPGatewayExtension"},
+		},
+	})
 }
 
 // Setup creates the kuadrant provider controller and registers it with the manager.
 func Setup(mgr ctrl.Manager) error {
-	if err := kuadrantapi.AddToScheme(mgr.GetScheme()); err != nil {
-		return fmt.Errorf("registering Kuadrant types: %w", err)
-	}
 	return (&Reconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
@@ -401,7 +406,7 @@ func (r *Reconciler) reconcileMCPServerRegistration(
 		},
 		Spec: kuadrantapi.MCPServerRegistrationSpec{
 			TargetRef: kuadrantapi.TargetReference{
-				Group: "gateway.networking.k8s.io",
+				Group: gatewayv1.GroupName,
 				Kind:  "HTTPRoute",
 				Name:  binding.Name,
 			},
@@ -595,42 +600,7 @@ func (r *Reconciler) listenerHostname(ctx context.Context, gwName, gwNamespace, 
 }
 
 // SetupWithManager sets up the controller with the Manager.
-// It checks whether the Gateway API HTTPRoute CRD and the Kuadrant
-// MCPServerRegistration CRD are installed before registering.
-// If either CRD is not available, the controller is skipped.
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
-	setupLog := mgr.GetLogger().WithName("setup")
-
-	httpRouteGVK := schema.GroupVersionKind{
-		Group:   "gateway.networking.k8s.io",
-		Version: "v1",
-		Kind:    "HTTPRoute",
-	}
-	if _, err := mgr.GetRESTMapper().RESTMapping(httpRouteGVK.GroupKind(), httpRouteGVK.Version); err != nil {
-		if meta.IsNoMatchError(err) {
-			setupLog.Info("Gateway API HTTPRoute CRD not found, skipping MCPGatewayBinding kuadrant controller. "+
-				"Install Gateway API CRDs and restart the operator to enable Kuadrant gateway integration.",
-				"gvk", httpRouteGVK.String())
-			return nil
-		}
-		return fmt.Errorf("checking for HTTPRoute CRD: %w", err)
-	}
-
-	regGVK := schema.GroupVersionKind{
-		Group:   "mcp.kuadrant.io",
-		Version: "v1alpha1",
-		Kind:    "MCPServerRegistration",
-	}
-	if _, err := mgr.GetRESTMapper().RESTMapping(regGVK.GroupKind(), regGVK.Version); err != nil {
-		if meta.IsNoMatchError(err) {
-			setupLog.Info("Kuadrant MCPServerRegistration CRD not found, skipping MCPGatewayBinding kuadrant controller. "+
-				"Install Kuadrant MCP Gateway CRDs and restart the operator to enable Kuadrant gateway integration.",
-				"gvk", regGVK.String())
-			return nil
-		}
-		return fmt.Errorf("checking for MCPServerRegistration CRD: %w", err)
-	}
-
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&mcpv1alpha1.MCPGatewayBinding{}, builder.WithPredicates(providers.MatchesProvider(ProviderName))).
 		Owns(&gatewayv1.HTTPRoute{}).

@@ -1,4 +1,4 @@
-//go:build e2e && e2e_gateway
+//go:build e2e
 
 /*
 Copyright 2026 The Kubernetes Authors
@@ -16,11 +16,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package e2e
+package httproute
 
 import (
 	"context"
-	"os"
 	"strings"
 	"testing"
 
@@ -118,10 +117,6 @@ func TestHTTPRouteProviderResources(t *testing.T) {
 }
 
 func TestHTTPRouteFallbackToRouteHostname(t *testing.T) {
-	if provider := os.Getenv("GATEWAY_PROVIDER"); provider != "httproute" {
-		t.Skipf("skipping: fallback to route-hostname only applies to httproute provider (got %s)", provider)
-	}
-
 	prov := f.ActiveProvider(t)
 	const configMapName = "gw-fallback-route-config"
 
@@ -171,10 +166,6 @@ func TestHTTPRouteFallbackToRouteHostname(t *testing.T) {
 }
 
 func TestHTTPRouteFallbackToGatewayAddress(t *testing.T) {
-	if provider := os.Getenv("GATEWAY_PROVIDER"); provider != "httproute" {
-		t.Skipf("skipping: fallback to gateway address only applies to httproute provider (got %s)", provider)
-	}
-
 	prov := f.ActiveProvider(t)
 	const configMapName = "gw-fallback-addr-config"
 

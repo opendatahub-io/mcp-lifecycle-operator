@@ -24,7 +24,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -45,7 +44,13 @@ import (
 )
 
 func init() {
-	providers.Register(ProviderName, Setup)
+	providers.Register(ProviderName, providers.Registration{
+		Factory: Setup,
+		RequiredCRDs: []schema.GroupVersionKind{
+			{Group: gatewayv1.GroupName, Version: "v1", Kind: "HTTPRoute"},
+			{Group: gatewayv1.GroupName, Version: "v1", Kind: "Gateway"},
+		},
+	})
 }
 
 // Setup creates the httproute provider controller and registers it with the manager.
@@ -294,26 +299,7 @@ func (r *Reconciler) deleteStaleHTTPRoute(ctx context.Context, binding *mcpv1alp
 }
 
 // SetupWithManager sets up the controller with the Manager.
-// It checks whether the Gateway API HTTPRoute CRD is installed before
-// registering. If the CRD is not available, the controller is skipped.
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
-	httpRouteGVK := schema.GroupVersionKind{
-		Group:   "gateway.networking.k8s.io",
-		Version: "v1",
-		Kind:    "HTTPRoute",
-	}
-
-	if _, err := mgr.GetRESTMapper().RESTMapping(httpRouteGVK.GroupKind(), httpRouteGVK.Version); err != nil {
-		if meta.IsNoMatchError(err) {
-			setupLog := mgr.GetLogger().WithName("setup")
-			setupLog.Info("Gateway API HTTPRoute CRD not found, skipping MCPGatewayBinding httproute controller. "+
-				"Install Gateway API CRDs and restart the operator to enable gateway integration.",
-				"gvk", httpRouteGVK.String())
-			return nil
-		}
-		return fmt.Errorf("checking for HTTPRoute CRD: %w", err)
-	}
-
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&mcpv1alpha1.MCPGatewayBinding{}, builder.WithPredicates(providers.MatchesProvider(ProviderName))).
 		Owns(&gatewayv1.HTTPRoute{}).

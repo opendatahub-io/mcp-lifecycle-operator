@@ -18,7 +18,6 @@ package httproute
 
 import (
 	"context"
-	"fmt"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -26,7 +25,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -38,7 +36,6 @@ import (
 	mcpv1alpha1 "github.com/kubernetes-sigs/mcp-lifecycle-operator/api/v1alpha1"
 	mcpv1beta1 "github.com/kubernetes-sigs/mcp-lifecycle-operator/api/v1beta1"
 	mcpcontroller "github.com/kubernetes-sigs/mcp-lifecycle-operator/internal/controller"
-	providertesting "github.com/kubernetes-sigs/mcp-lifecycle-operator/internal/controller/providers/testing"
 )
 
 const (
@@ -930,47 +927,6 @@ var _ = Describe("HTTPRoute Provider Controller", func() {
 			Expect(Setup(mgr)).To(Succeed())
 		})
 
-		It("should skip when HTTPRoute CRD is not found", func() {
-			mgr, err := ctrl.NewManager(cfg, ctrl.Options{
-				Scheme: k8sClient.Scheme(),
-			})
-			Expect(err).NotTo(HaveOccurred())
-
-			wrappedMgr := &providertesting.CRDMissingManager{
-				Manager: mgr,
-				MissingGVKs: map[schema.GroupVersionKind]bool{
-					{Group: "gateway.networking.k8s.io", Version: "v1", Kind: "HTTPRoute"}: true,
-				},
-			}
-
-			r := &Reconciler{
-				Client: mgr.GetClient(),
-				Scheme: mgr.GetScheme(),
-			}
-			Expect(r.SetupWithManager(wrappedMgr)).To(Succeed())
-		})
-
-		It("should return error when HTTPRoute CRD check fails with non-NoMatch error", func() {
-			mgr, err := ctrl.NewManager(cfg, ctrl.Options{
-				Scheme: k8sClient.Scheme(),
-			})
-			Expect(err).NotTo(HaveOccurred())
-
-			wrappedMgr := &providertesting.CRDMissingManager{
-				Manager: mgr,
-				ErrorGVKs: map[schema.GroupVersionKind]error{
-					{Group: "gateway.networking.k8s.io", Version: "v1", Kind: "HTTPRoute"}: fmt.Errorf("connection refused"),
-				},
-			}
-
-			r := &Reconciler{
-				Client: mgr.GetClient(),
-				Scheme: mgr.GetScheme(),
-			}
-			err = r.SetupWithManager(wrappedMgr)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("checking for HTTPRoute CRD"))
-		})
 	})
 
 	It("should set Registered=False when gateway-name present but gateway-namespace key missing", func() {

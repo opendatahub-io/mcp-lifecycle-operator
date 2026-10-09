@@ -1,5 +1,3 @@
-//go:build e2e && e2e_gateway
-
 /*
 Copyright 2026 The Kubernetes Authors
 
@@ -21,6 +19,7 @@ package framework
 import (
 	"context"
 	"fmt"
+	"maps"
 	"net/http"
 	"os"
 	"testing"
@@ -37,6 +36,21 @@ import (
 	kuadrantapi "github.com/kubernetes-sigs/mcp-lifecycle-operator/internal/controller/providers/kuadrant/api"
 )
 
+const (
+	configKeyGatewayName      = "gateway-name"
+	configKeyGatewayNamespace = "gateway-namespace"
+	configKeyGatewayClass     = "gateway-class"
+	configKeyRouteHostname    = "route-hostname"
+	configKeyPublicHostname   = "public-hostname"
+	configKeyExtensionName    = "extension-name"
+	configKeyExtensionNS      = "extension-namespace"
+	configKeyPrefix           = "prefix"
+
+	providerKuadrant = "kuadrant"
+
+	defaultRouteHostname = "mcp.e2e.test"
+)
+
 // ProviderConfig describes a gateway provider for conformance testing.
 type ProviderConfig struct {
 	Name       string
@@ -47,9 +61,7 @@ type ProviderConfig struct {
 // safe to mutate without affecting the global registry.
 func (p ProviderConfig) CopyConfigData() map[string]string {
 	cp := make(map[string]string, len(p.ConfigData))
-	for k, v := range p.ConfigData {
-		cp[k] = v
-	}
+	maps.Copy(cp, p.ConfigData)
 	return cp
 }
 
@@ -57,23 +69,23 @@ var providers = map[string]ProviderConfig{
 	"httproute": {
 		Name: "httproute",
 		ConfigData: map[string]string{
-			"gateway-name":      "e2e-gateway",
-			"gateway-namespace": "gateway-system",
-			"gateway-class":     "eg",
-			"route-hostname":    "mcp.e2e.test",
-			"public-hostname":   "mcp.e2e.test",
+			configKeyGatewayName:      "e2e-gateway",
+			configKeyGatewayNamespace: "gateway-system",
+			configKeyGatewayClass:     "eg",
+			configKeyRouteHostname:    defaultRouteHostname,
+			configKeyPublicHostname:   defaultRouteHostname,
 		},
 	},
-	"kuadrant": {
-		Name: "kuadrant",
+	providerKuadrant: {
+		Name: providerKuadrant,
 		ConfigData: map[string]string{
-			"gateway-name":        "mcp-gateway",
-			"gateway-namespace":   "gateway-system",
-			"gateway-class":       "istio",
-			"route-hostname":      "mcp.e2e.test",
-			"extension-name":      "mcp-gateway-extension",
-			"extension-namespace": "mcp-system",
-			"prefix":              "e2e_",
+			configKeyGatewayName:      "mcp-gateway",
+			configKeyGatewayNamespace: "gateway-system",
+			configKeyGatewayClass:     "istio",
+			configKeyRouteHostname:    defaultRouteHostname,
+			configKeyExtensionName:    "mcp-gateway-extension",
+			configKeyExtensionNS:      "mcp-system",
+			configKeyPrefix:           "e2e_",
 		},
 	},
 }
@@ -159,7 +171,7 @@ func CreateMCPGatewayExtension(ctx context.Context, t *testing.T, cfg *envconf.C
 		},
 		Spec: kuadrantapi.MCPGatewayExtensionSpec{
 			TargetRef: kuadrantapi.TargetReference{
-				Group:     "gateway.networking.k8s.io",
+				Group:     gatewayv1.GroupName,
 				Kind:      "Gateway",
 				Name:      gatewayName,
 				Namespace: gatewayNamespace,
@@ -222,32 +234,32 @@ func WaitForExtensionReady(ctx context.Context, t *testing.T, cfg *envconf.Confi
 // uses gateway-name/gateway-namespace.
 func BuildControllerConfigData(prov ProviderConfig, sectionName string) map[string]string {
 	switch prov.Name {
-	case "kuadrant":
+	case providerKuadrant:
 		data := map[string]string{
-			"extension-name":      prov.ConfigData["extension-name"],
-			"extension-namespace": prov.ConfigData["extension-namespace"],
-			"prefix":              prov.ConfigData["prefix"],
+			configKeyExtensionName: prov.ConfigData[configKeyExtensionName],
+			configKeyExtensionNS:   prov.ConfigData[configKeyExtensionNS],
+			configKeyPrefix:        prov.ConfigData[configKeyPrefix],
 		}
 		if sectionName != "" {
 			data["section-name"] = sectionName
 		}
-		if rh, ok := prov.ConfigData["route-hostname"]; ok {
-			data["route-hostname"] = rh
+		if rh, ok := prov.ConfigData[configKeyRouteHostname]; ok {
+			data[configKeyRouteHostname] = rh
 		}
 		return data
 	default:
 		data := map[string]string{
-			"gateway-name":      prov.ConfigData["gateway-name"],
-			"gateway-namespace": prov.ConfigData["gateway-namespace"],
+			configKeyGatewayName:      prov.ConfigData[configKeyGatewayName],
+			configKeyGatewayNamespace: prov.ConfigData[configKeyGatewayNamespace],
 		}
 		if sectionName != "" {
 			data["section-name"] = sectionName
 		}
-		if rh, ok := prov.ConfigData["route-hostname"]; ok {
-			data["route-hostname"] = rh
+		if rh, ok := prov.ConfigData[configKeyRouteHostname]; ok {
+			data[configKeyRouteHostname] = rh
 		}
-		if ph, ok := prov.ConfigData["public-hostname"]; ok {
-			data["public-hostname"] = ph
+		if ph, ok := prov.ConfigData[configKeyPublicHostname]; ok {
+			data[configKeyPublicHostname] = ph
 		}
 		return data
 	}
@@ -269,12 +281,12 @@ func EnsureMultiListenerGateway(ctx context.Context, t *testing.T, cfg *envconf.
 	r := cfg.Client().Resources()
 
 	fromAll := gatewayv1.NamespacesFromAll
-	var gwListeners []gatewayv1.Listener
+	gwListeners := make([]gatewayv1.Listener, 0, len(listeners))
 	for _, l := range listeners {
 		listener := gatewayv1.Listener{
 			Name:     gatewayv1.SectionName(l.Name),
 			Protocol: l.Protocol,
-			Port:     gatewayv1.PortNumber(l.Port),
+			Port:     l.Port,
 			AllowedRoutes: &gatewayv1.AllowedRoutes{
 				Namespaces: &gatewayv1.RouteNamespaces{
 					From: &fromAll,
@@ -346,7 +358,7 @@ func AssertMCPReachable(ctx context.Context, t *testing.T, gatewayAddress, route
 		t.Fatalf("MCP handshake through gateway failed (address=%s, host=%s, path=%s): %v",
 			gatewayAddress, routeHostname, path, err)
 	}
-	defer session.Close()
+	defer func() { _ = session.Close() }()
 
 	initResult := session.InitializeResult()
 	if initResult == nil {
@@ -374,7 +386,7 @@ func EnsureReferenceGrant(ctx context.Context, t *testing.T, cfg *envconf.Config
 		Spec: gatewayv1.ReferenceGrantSpec{
 			From: []gatewayv1.ReferenceGrantFrom{
 				{
-					Group:     "gateway.networking.k8s.io",
+					Group:     gatewayv1.GroupName,
 					Kind:      "HTTPRoute",
 					Namespace: gatewayv1.Namespace(fromNamespace),
 				},
