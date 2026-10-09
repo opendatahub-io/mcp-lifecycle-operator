@@ -20,7 +20,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -29,7 +28,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -41,7 +39,6 @@ import (
 	mcpv1beta1 "github.com/kubernetes-sigs/mcp-lifecycle-operator/api/v1beta1"
 	mcpcontroller "github.com/kubernetes-sigs/mcp-lifecycle-operator/internal/controller"
 	kuadrantapi "github.com/kubernetes-sigs/mcp-lifecycle-operator/internal/controller/providers/kuadrant/api"
-	providertesting "github.com/kubernetes-sigs/mcp-lifecycle-operator/internal/controller/providers/testing"
 )
 
 const testNamespace = "default"
@@ -1792,89 +1789,6 @@ var _ = Describe("Kuadrant Provider Controller", func() {
 			Expect(r.SetupWithManager(mgr)).To(Succeed())
 		})
 
-		It("should skip when HTTPRoute CRD is not found", func() {
-			mgr, err := ctrl.NewManager(cfg, ctrl.Options{
-				Scheme: k8sClient.Scheme(),
-			})
-			Expect(err).NotTo(HaveOccurred())
-
-			wrappedMgr := &providertesting.CRDMissingManager{
-				Manager: mgr,
-				MissingGVKs: map[schema.GroupVersionKind]bool{
-					{Group: "gateway.networking.k8s.io", Version: "v1", Kind: "HTTPRoute"}: true,
-				},
-			}
-
-			r := &Reconciler{
-				Client: mgr.GetClient(),
-				Scheme: mgr.GetScheme(),
-			}
-			Expect(r.SetupWithManager(wrappedMgr)).To(Succeed())
-		})
-
-		It("should skip when MCPServerRegistration CRD is not found", func() {
-			mgr, err := ctrl.NewManager(cfg, ctrl.Options{
-				Scheme: k8sClient.Scheme(),
-			})
-			Expect(err).NotTo(HaveOccurred())
-
-			wrappedMgr := &providertesting.CRDMissingManager{
-				Manager: mgr,
-				MissingGVKs: map[schema.GroupVersionKind]bool{
-					{Group: "mcp.kuadrant.io", Version: "v1alpha1", Kind: "MCPServerRegistration"}: true,
-				},
-			}
-
-			r := &Reconciler{
-				Client: mgr.GetClient(),
-				Scheme: mgr.GetScheme(),
-			}
-			Expect(r.SetupWithManager(wrappedMgr)).To(Succeed())
-		})
-
-		It("should return error when HTTPRoute CRD check fails with non-NoMatch error", func() {
-			mgr, err := ctrl.NewManager(cfg, ctrl.Options{
-				Scheme: k8sClient.Scheme(),
-			})
-			Expect(err).NotTo(HaveOccurred())
-
-			wrappedMgr := &providertesting.CRDMissingManager{
-				Manager: mgr,
-				ErrorGVKs: map[schema.GroupVersionKind]error{
-					{Group: "gateway.networking.k8s.io", Version: "v1", Kind: "HTTPRoute"}: fmt.Errorf("connection refused"),
-				},
-			}
-
-			r := &Reconciler{
-				Client: mgr.GetClient(),
-				Scheme: mgr.GetScheme(),
-			}
-			err = r.SetupWithManager(wrappedMgr)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("checking for HTTPRoute CRD"))
-		})
-
-		It("should return error when MCPServerRegistration CRD check fails with non-NoMatch error", func() {
-			mgr, err := ctrl.NewManager(cfg, ctrl.Options{
-				Scheme: k8sClient.Scheme(),
-			})
-			Expect(err).NotTo(HaveOccurred())
-
-			wrappedMgr := &providertesting.CRDMissingManager{
-				Manager: mgr,
-				ErrorGVKs: map[schema.GroupVersionKind]error{
-					{Group: "mcp.kuadrant.io", Version: "v1alpha1", Kind: "MCPServerRegistration"}: fmt.Errorf("connection refused"),
-				},
-			}
-
-			r := &Reconciler{
-				Client: mgr.GetClient(),
-				Scheme: mgr.GetScheme(),
-			}
-			err = r.SetupWithManager(wrappedMgr)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("checking for MCPServerRegistration CRD"))
-		})
 	})
 
 	Describe("findBindingsForMCPServer", func() {

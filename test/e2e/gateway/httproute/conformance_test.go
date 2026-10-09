@@ -1,4 +1,4 @@
-//go:build e2e && e2e_gateway
+//go:build e2e
 
 /*
 Copyright 2026 The Kubernetes Authors
@@ -16,7 +16,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package e2e
+package httproute
 
 import (
 	"context"

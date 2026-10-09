@@ -57,11 +57,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - provider: httproute
-            deploy_target: deploy-test-e2e-httproute
-          - provider: kuadrant
-            deploy_target: deploy-test-e2e-kuadrant
+        provider: [httproute, kuadrant]
     steps:
       - name: Clone the code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -81,8 +77,8 @@ jobs:
           chmod +x "./${KIND_BINARY}"
           sudo mv "./${KIND_BINARY}" /usr/local/bin/kind
 
-      - name: Deploy operator and gateway provider
-        run: make ${{ matrix.deploy_target }}
+      - name: Deploy operator and cloud-provider-kind
+        run: make deploy-test-e2e-gateway
 
       - name: Run gateway e2e tests
         run: make test-e2e-gateway GATEWAY_PROVIDER=${{ matrix.provider }}

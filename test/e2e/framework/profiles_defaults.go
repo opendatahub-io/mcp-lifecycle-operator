@@ -38,8 +38,7 @@ func init() {
 		},
 	})
 
-	// Gateway provider profiles (require -tags=e2e_gateway to compile
-	// matching tests; without it the profile matches nothing).
+	// Gateway provider profiles select tests in the test/e2e/gateway/ sub-packages.
 	RegisterProfile(Profile{
 		Name: "gateway-httproute",
 		Labels: map[string][]string{

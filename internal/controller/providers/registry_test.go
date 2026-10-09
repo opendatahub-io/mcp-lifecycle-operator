@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
@@ -30,13 +32,17 @@ func TestRegisterAndSetupAll(t *testing.T) {
 	registry = nil
 
 	var calls []string
-	Register("alpha", func(mgr ctrl.Manager) error {
-		calls = append(calls, "alpha")
-		return nil
+	Register("alpha", Registration{
+		Factory: func(mgr ctrl.Manager) error {
+			calls = append(calls, "alpha")
+			return nil
+		},
 	})
-	Register("beta", func(mgr ctrl.Manager) error {
-		calls = append(calls, "beta")
-		return nil
+	Register("beta", Registration{
+		Factory: func(mgr ctrl.Manager) error {
+			calls = append(calls, "beta")
+			return nil
+		},
 	})
 
 	if len(registry) != 2 {
@@ -57,8 +63,10 @@ func TestSetupAllError(t *testing.T) {
 
 	registry = nil
 
-	Register("failing", func(mgr ctrl.Manager) error {
-		return fmt.Errorf("setup failed")
+	Register("failing", Registration{
+		Factory: func(mgr ctrl.Manager) error {
+			return fmt.Errorf("setup failed")
+		},
 	})
 
 	err := SetupAll(nil)
@@ -67,5 +75,68 @@ func TestSetupAllError(t *testing.T) {
 	}
 	if got := err.Error(); got != "provider failing: setup failed" {
 		t.Fatalf("unexpected error message: %s", got)
+	}
+}
+
+func TestSetupAllWithRequiredCRDsPresent(t *testing.T) {
+	saved := registry
+	t.Cleanup(func() { registry = saved })
+
+	gv := schema.GroupVersion{Group: "gateway.networking.k8s.io", Version: "v1"}
+	httpRouteGVK := gv.WithKind("HTTPRoute")
+
+	mapper := meta.NewDefaultRESTMapper([]schema.GroupVersion{gv})
+	mapper.Add(httpRouteGVK, meta.RESTScopeNamespace)
+	mgr := &fakeManager{mapper: mapper}
+
+	registry = nil
+	var calls []string
+	Register("plain", Registration{
+		Factory: func(mgr ctrl.Manager) error {
+			calls = append(calls, "plain")
+			return nil
+		},
+	})
+	Register("withCRDs", Registration{
+		Factory: func(mgr ctrl.Manager) error {
+			calls = append(calls, "withCRDs")
+			return nil
+		},
+		RequiredCRDs: []schema.GroupVersionKind{httpRouteGVK},
+	})
+
+	if err := SetupAll(mgr); err != nil {
+		t.Fatalf("SetupAll() unexpected error: %v", err)
+	}
+	if len(calls) != 2 || calls[0] != "plain" || calls[1] != "withCRDs" {
+		t.Fatalf("expected calls [plain, withCRDs], got %v", calls)
+	}
+}
+
+func TestSetupAllWithRequiredCRDsError(t *testing.T) {
+	saved := registry
+	t.Cleanup(func() { registry = saved })
+
+	gv := schema.GroupVersion{Group: "gateway.networking.k8s.io", Version: "v1"}
+	httpRouteGVK := gv.WithKind("HTTPRoute")
+
+	mapper := meta.NewDefaultRESTMapper([]schema.GroupVersion{gv})
+	mapper.Add(httpRouteGVK, meta.RESTScopeNamespace)
+	mgr := &fakeManager{mapper: mapper}
+
+	registry = nil
+	Register("failingWithCRDs", Registration{
+		Factory: func(mgr ctrl.Manager) error {
+			return fmt.Errorf("factory failed")
+		},
+		RequiredCRDs: []schema.GroupVersionKind{httpRouteGVK},
+	})
+
+	err := SetupAll(mgr)
+	if err == nil {
+		t.Fatal("expected error from SetupAll")
+	}
+	if got := err.Error(); got != "provider failingWithCRDs: factory failed" {
+		t.Fatalf("unexpected error: %s", got)
 	}
 }

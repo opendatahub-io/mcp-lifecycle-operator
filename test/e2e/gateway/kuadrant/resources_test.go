@@ -1,4 +1,4 @@
-//go:build e2e && e2e_gateway
+//go:build e2e
 
 /*
 Copyright 2026 The Kubernetes Authors
@@ -16,17 +16,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package e2e
+package kuadrant
 
 import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"sync"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
@@ -40,17 +38,6 @@ import (
 	"github.com/kubernetes-sigs/mcp-lifecycle-operator/test/e2e/framework/labels/speed"
 )
 
-var registerKuadrantOnce sync.Once
-
-func ensureKuadrantScheme(t *testing.T, scheme *runtime.Scheme) {
-	t.Helper()
-	registerKuadrantOnce.Do(func() {
-		if err := kuadrantapi.AddToScheme(scheme); err != nil {
-			t.Fatalf("failed to register Kuadrant types: %v", err)
-		}
-	})
-}
-
 func TestKuadrantProviderResources(t *testing.T) {
 	prov := f.ActiveProvider(t)
 	const configMapName = "gw-kuadrant-config"
@@ -60,8 +47,6 @@ func TestKuadrantProviderResources(t *testing.T) {
 		WithLabel(speed.Label, speed.Moderate).
 		WithLabel(scope.Label, scope.Kuadrant).
 		Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
-			ensureKuadrantScheme(t, cfg.Client().Resources().GetScheme())
-
 			ns := ctx.Value(f.NsKey).(string)
 			listenerName := f.EnsureGateway(ctx, t, cfg, prov.ConfigData["gateway-name"], prov.ConfigData["gateway-namespace"], prov.ConfigData["gateway-class"])
 			f.EnsureReferenceGrant(ctx, t, cfg, ns, prov.ConfigData["gateway-namespace"])
@@ -154,8 +139,6 @@ func TestKuadrantAutoConstructedHostname(t *testing.T) {
 		WithLabel(speed.Label, speed.Moderate).
 		WithLabel(scope.Label, scope.Kuadrant).
 		Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
-			ensureKuadrantScheme(t, cfg.Client().Resources().GetScheme())
-
 			ns := ctx.Value(f.NsKey).(string)
 			f.EnsureReferenceGrant(ctx, t, cfg, ns, prov.ConfigData["gateway-namespace"])
 
@@ -229,8 +212,6 @@ func TestKuadrantDefaultSectionName(t *testing.T) {
 		WithLabel(speed.Label, speed.Moderate).
 		WithLabel(scope.Label, scope.Kuadrant).
 		Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
-			ensureKuadrantScheme(t, cfg.Client().Resources().GetScheme())
-
 			ns := ctx.Value(f.NsKey).(string)
 			f.EnsureReferenceGrant(ctx, t, cfg, ns, prov.ConfigData["gateway-namespace"])
 
@@ -298,8 +279,6 @@ func TestKuadrantPublicHostnamePriority(t *testing.T) {
 		WithLabel(speed.Label, speed.Moderate).
 		WithLabel(scope.Label, scope.Kuadrant).
 		Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
-			ensureKuadrantScheme(t, cfg.Client().Resources().GetScheme())
-
 			ns := ctx.Value(f.NsKey).(string)
 			f.EnsureReferenceGrant(ctx, t, cfg, ns, prov.ConfigData["gateway-namespace"])
 
@@ -363,8 +342,6 @@ func TestKuadrantExtensionFallback(t *testing.T) {
 		WithLabel(speed.Label, speed.Moderate).
 		WithLabel(scope.Label, scope.Kuadrant).
 		Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
-			ensureKuadrantScheme(t, cfg.Client().Resources().GetScheme())
-
 			ns := ctx.Value(f.NsKey).(string)
 			f.EnsureReferenceGrant(ctx, t, cfg, ns, prov.ConfigData["gateway-namespace"])
 
@@ -461,8 +438,6 @@ func TestKuadrantExtensionNotFound(t *testing.T) {
 		WithLabel(speed.Label, speed.Moderate).
 		WithLabel(scope.Label, scope.Kuadrant).
 		Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
-			ensureKuadrantScheme(t, cfg.Client().Resources().GetScheme())
-
 			ns := ctx.Value(f.NsKey).(string)
 			f.EnsureGateway(ctx, t, cfg, prov.ConfigData["gateway-name"], prov.ConfigData["gateway-namespace"], prov.ConfigData["gateway-class"])
 
@@ -502,8 +477,6 @@ func TestKuadrantExtensionNotReady(t *testing.T) {
 		WithLabel(speed.Label, speed.Moderate).
 		WithLabel(scope.Label, scope.Kuadrant).
 		Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
-			ensureKuadrantScheme(t, cfg.Client().Resources().GetScheme())
-
 			ns := ctx.Value(f.NsKey).(string)
 			f.EnsureReferenceGrant(ctx, t, cfg, ns, prov.ConfigData["gateway-namespace"])
 
@@ -552,8 +525,6 @@ func TestKuadrantCrossNamespaceExtension(t *testing.T) {
 		WithLabel(speed.Label, speed.Moderate).
 		WithLabel(scope.Label, scope.Kuadrant).
 		Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
-			ensureKuadrantScheme(t, cfg.Client().Resources().GetScheme())
-
 			ns := ctx.Value(f.NsKey).(string)
 			f.EnsureReferenceGrant(ctx, t, cfg, ns, prov.ConfigData["gateway-namespace"])
 
@@ -619,8 +590,6 @@ func TestKuadrantPublicAddressPending(t *testing.T) {
 		WithLabel(speed.Label, speed.Moderate).
 		WithLabel(scope.Label, scope.Kuadrant).
 		Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
-			ensureKuadrantScheme(t, cfg.Client().Resources().GetScheme())
-
 			ns := ctx.Value(f.NsKey).(string)
 			f.EnsureReferenceGrant(ctx, t, cfg, ns, prov.ConfigData["gateway-namespace"])
 
@@ -678,8 +647,6 @@ func TestKuadrantListenerHostnameFallback(t *testing.T) {
 		WithLabel(speed.Label, speed.Moderate).
 		WithLabel(scope.Label, scope.Kuadrant).
 		Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
-			ensureKuadrantScheme(t, cfg.Client().Resources().GetScheme())
-
 			ns := ctx.Value(f.NsKey).(string)
 			f.EnsureReferenceGrant(ctx, t, cfg, ns, prov.ConfigData["gateway-namespace"])
 
@@ -745,8 +712,6 @@ func TestKuadrantAutoGeneratedPrefix(t *testing.T) {
 		WithLabel(speed.Label, speed.Moderate).
 		WithLabel(scope.Label, scope.Kuadrant).
 		Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
-			ensureKuadrantScheme(t, cfg.Client().Resources().GetScheme())
-
 			ns := ctx.Value(f.NsKey).(string)
 			listenerName := f.EnsureGateway(ctx, t, cfg, prov.ConfigData["gateway-name"], prov.ConfigData["gateway-namespace"], prov.ConfigData["gateway-class"])
 			f.EnsureReferenceGrant(ctx, t, cfg, ns, prov.ConfigData["gateway-namespace"])
@@ -808,8 +773,6 @@ func TestKuadrantExplicitPrefixOverride(t *testing.T) {
 		WithLabel(speed.Label, speed.Moderate).
 		WithLabel(scope.Label, scope.Kuadrant).
 		Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
-			ensureKuadrantScheme(t, cfg.Client().Resources().GetScheme())
-
 			ns := ctx.Value(f.NsKey).(string)
 			listenerName := f.EnsureGateway(ctx, t, cfg, prov.ConfigData["gateway-name"], prov.ConfigData["gateway-namespace"], prov.ConfigData["gateway-class"])
 			f.EnsureReferenceGrant(ctx, t, cfg, ns, prov.ConfigData["gateway-namespace"])
