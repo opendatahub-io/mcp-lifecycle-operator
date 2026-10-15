@@ -123,6 +123,7 @@ func TestMCPServerUpdatePort(t *testing.T) {
 
 			f.UpdateWithRetry(ctx, t, r, server, func(s *mcpv1alpha1.MCPServer) {
 				s.Spec.Config.Port = 3002
+				s.Spec.Config.Arguments = []string{"--port", "3002", "--read-only"}
 			})
 			t.Log("updated MCPServer port to 3002")
 
@@ -132,8 +133,8 @@ func TestMCPServerUpdatePort(t *testing.T) {
 			server := f.ServerFromContext(ctx)
 			r := cfg.Client().Resources()
 
-			f.WaitForMCPServerReconciled(ctx, t, r, server)
-			t.Log("MCPServer reconciled after port update")
+			f.WaitForMCPServerReconciledAndReady(ctx, t, r, server)
+			t.Log("MCPServer reconciled and ready after port update")
 
 			return ctx
 		}).
