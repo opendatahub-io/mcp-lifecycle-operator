@@ -20,6 +20,10 @@ IMG_E2E ?= $(IMAGE_TAG_BASE_E2E):$(IMAGE_TAG)
 image-e2e: ## Build e2e test container image locally.
 	$(CONTAINER_TOOL) build -f test/e2e/Dockerfile -t $(IMG_E2E) .
 
+.PHONY: test-disruptive
+test-disruptive: ## Run the disruptive DSC-toggle tests (ODH/RHOAI only; destructive, mutates the shared DataScienceCluster). Skips when no DSC is present.
+	go test -tags=disruptive ./test/disruptive/ -v -count=1 -timeout 1h
+
 RPM_LOCKFILE_IMAGE ?= rpm-lockfile-prototype:local
 
 .PHONY: rpm-lockfile

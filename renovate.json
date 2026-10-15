@@ -6,7 +6,7 @@
   ],
   "commitMessagePrefix": "[{{baseBranch}}]",
   "enabledManagers": ["dockerfile", "tekton", "rpm-lockfile"],
-  "ignorePaths": ["/docs/**"],
+  "ignorePaths": ["docs/**", "hack/**"],
   "dockerfile": {
     "schedule": ["at any time"]
   },

@@ -231,3 +231,69 @@ func dscGVK() schema.GroupVersionKind {
 		Kind:    dscKind,
 	}
 }
+
+// Exported DSC primitives, reused by disruptive tests so there is a single
+// implementation of DataScienceCluster access in this repository.
+const (
+	// StateManaged / StateRemoved are the two DSC component management states.
+	StateManaged = stateManaged
+	StateRemoved = stateRemoved
+
+	// DSCComponentMCPLO is the mcplifecycleoperator component/stanza key under
+	// the DataScienceCluster spec and status.
+	DSCComponentMCPLO = componentPath
+)
+
+// FindDataScienceCluster returns the name of the singleton DataScienceCluster
+// and true, or ("", false) when the DSC CRD is absent or no instance exists
+// (i.e. a non-ODH/RHOAI cluster). Callers should skip in that case.
+func FindDataScienceCluster(ctx context.Context, cl cr.Client) (string, bool, error) {
+	list := &unstructured.UnstructuredList{}
+	list.SetGroupVersionKind(dscGVK().GroupVersion().WithKind(dscKind + "List"))
+	if err := cl.List(ctx, list); err != nil {
+		if apimeta.IsNoMatchError(err) {
+			return "", false, nil
+		}
+		return "", false, fmt.Errorf("failed to list DataScienceClusters: %w", err)
+	}
+	if len(list.Items) == 0 {
+		return "", false, nil
+	}
+	return list.Items[0].GetName(), true, nil
+}
+
+// SetMCPLOManagementState patches the mcplifecycleoperator managementState on
+// the named DataScienceCluster, retrying on optimistic-concurrency conflicts.
+// Exported wrapper around the internal setManagementState so disruptive tests
+// reuse the same patch logic rather than reimplementing it.
+func SetMCPLOManagementState(ctx context.Context, cl cr.Client, dscName, desired string) error {
+	return setManagementState(ctx, cl, dscName, desired)
+}
+
+// WaitForDSCComponentManagementState polls until the DataScienceCluster
+// status.components.mcplifecycleoperator.managementState equals expected. The
+// status field is reconciled by the ODH operator and is an oracle independent of
+// the spec field a caller patches. When expecting Removed, an absent component
+// entry in status is also accepted: depending on the ODH release the operator
+// may either set managementState to Removed or drop the component from status
+// entirely; both mean "removed".
+func WaitForDSCComponentManagementState(ctx context.Context, cl cr.Client, dscName, expected string, timeout time.Duration) error {
+	return wait.PollUntilContextTimeout(ctx, 3*time.Second, timeout, true, func(ctx context.Context) (bool, error) {
+		dsc := &unstructured.Unstructured{}
+		dsc.SetGroupVersionKind(dscGVK())
+		if err := cl.Get(ctx, cr.ObjectKey{Name: dscName}, dsc); err != nil {
+			return false, err
+		}
+		got, found, err := unstructured.NestedString(dsc.Object, "status", "components", componentPath, "managementState")
+		if err != nil {
+			return false, err
+		}
+		if got == expected {
+			return true, nil
+		}
+		if expected == stateRemoved && !found {
+			return true, nil
+		}
+		return false, nil
+	})
+}

@@ -16,7 +16,7 @@ limitations under the License.
 
 // +kubebuilder:skip
 
-// Local types for mcp.kuadrant.io/v1alpha1 MCPServerRegistration.
+// Local types for mcp.kuadrant.io/v1 MCPServerRegistration.
 // Defined here instead of importing from the Kuadrant project because the
 // mcp-gateway repository is not published as a standalone Go module and the
 // kuadrant-operator module does not contain MCPServerRegistration types.
@@ -29,7 +29,7 @@ import (
 )
 
 var (
-	SchemeGroupVersion = schema.GroupVersion{Group: "mcp.kuadrant.io", Version: "v1alpha1"}
+	SchemeGroupVersion = schema.GroupVersion{Group: "mcp.kuadrant.io", Version: "v1"}
 	SchemeBuilder      = runtime.NewSchemeBuilder(addKnownTypes)
 	AddToScheme        = SchemeBuilder.AddToScheme
 )

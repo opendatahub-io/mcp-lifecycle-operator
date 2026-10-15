@@ -27,6 +27,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
 
@@ -34,7 +35,7 @@ import (
 )
 
 const (
-	mcpGatewayVersion  = "v0.9.0"
+	mcpGatewayVersion  = "v1.0.1"
 	gatewayNamespace   = "gateway-system"
 	gatewayName        = "mcp-gateway"
 	mcpSystemNamespace = "mcp-system"
@@ -78,25 +79,29 @@ func (l *kuadrantLifecycle) Setup(ctx context.Context, cfg *envconf.Config) erro
 	}
 
 	// Create ReferenceGrant allowing mcp-system to reference gateway-system resources.
-	grant := &gatewayv1.ReferenceGrant{
+	// Use v1beta1 — not all platforms serve ReferenceGrant as v1 yet.
+	if err := gatewayv1beta1.Install(r.GetScheme()); err != nil {
+		return fmt.Errorf("register Gateway API v1beta1 types: %w", err)
+	}
+	grant := &gatewayv1beta1.ReferenceGrant{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      referenceGrantName,
 			Namespace: gatewayNamespace,
 		},
-		Spec: gatewayv1.ReferenceGrantSpec{
-			From: []gatewayv1.ReferenceGrantFrom{
+		Spec: gatewayv1beta1.ReferenceGrantSpec{
+			From: []gatewayv1beta1.ReferenceGrantFrom{
 				{
 					Group:     "gateway.networking.k8s.io",
 					Kind:      "HTTPRoute",
-					Namespace: gatewayv1.Namespace(mcpSystemNamespace),
+					Namespace: gatewayv1beta1.Namespace(mcpSystemNamespace),
 				},
 				{
 					Group:     "mcp.kuadrant.io",
 					Kind:      "MCPGatewayExtension",
-					Namespace: gatewayv1.Namespace(mcpSystemNamespace),
+					Namespace: gatewayv1beta1.Namespace(mcpSystemNamespace),
 				},
 			},
-			To: []gatewayv1.ReferenceGrantTo{
+			To: []gatewayv1beta1.ReferenceGrantTo{
 				{Group: "", Kind: "Service"},
 				{Group: "gateway.networking.k8s.io", Kind: "Gateway"},
 			},
@@ -188,7 +193,7 @@ func (l *kuadrantLifecycle) Teardown(ctx context.Context, cfg *envconf.Config) e
 	}
 
 	// Delete the gateway resources we created.
-	grant := &gatewayv1.ReferenceGrant{
+	grant := &gatewayv1beta1.ReferenceGrant{
 		ObjectMeta: metav1.ObjectMeta{Name: referenceGrantName, Namespace: gatewayNamespace},
 	}
 	_ = r.Delete(ctx, grant)
