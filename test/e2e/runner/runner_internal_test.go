@@ -16,7 +16,7 @@ func TestInitializeFillsDefaults(t *testing.T) {
 		r.ArtifactsDir != defaultArtifactsDir || r.ResultsDir != defaultResultsDir ||
 		r.GotestsumBin != defaultGotestsumBin || r.Verbosity != "testname" ||
 		r.Test2JSONBin != defaultTest2JSONBin || r.TestCount != "1" ||
-		r.Component != defaultComponent || r.RepoAbbr != "mcplo" || r.ReportMode != "rhoai" {
+		r.Component != defaultComponent || r.RepoAbbr != "operator" || r.ReportMode != "rhoai" {
 		t.Fatalf("unexpected defaults: %+v", r)
 	}
 }

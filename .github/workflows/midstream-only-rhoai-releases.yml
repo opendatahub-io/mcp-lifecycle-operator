@@ -4,52 +4,65 @@ on:
   schedule:
     - cron: '17 */2 * * *'
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      downstream-repository:
+        description: Downstream owner/repository whose release branch names are mirrored
+        type: string
+      manifest-prefix:
+        description: Tekton filename prefix, with E2E filenames derived by adding -e2e
+        type: string
+      image-repository:
+        description: Operator image repository, with the E2E image derived by adding -e2e
+        type: string
+      excluded-branches:
+        description: Newline- or comma-delimited exact branch names to skip (empty excludes none)
+        type: string
+    secrets:
+      target-token:
+        description: Optional App token with contents write access to the caller repository
+        required: false
 
 permissions:
   contents: write
 
 concurrency:
-  group: provision-rhoai-branches
+  group: provision-rhoai-branches-${{ github.repository }}
   cancel-in-progress: false
 
 jobs:
   provision:
-    if: github.repository == 'opendatahub-io/mcp-lifecycle-operator' && github.ref == 'refs/heads/main'
+    if: github.repository_owner == 'opendatahub-io'
     runs-on: ubuntu-latest
     steps:
-      - name: Check out ODH main
+      - name: Check out target main
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
+          repository: ${{ github.repository }}
           ref: main
+          path: target
+          token: ${{ secrets.target-token || github.token }}
           persist-credentials: false
           fetch-depth: 1
 
+      - name: Check out shared provisioner
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: provisioner
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+
       - name: Create missing release branches
+        working-directory: target
         env:
-          ODH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-
-          readonly downstream_url="https://github.com/red-hat-data-services/mcp-lifecycle-operator.git"
-          readonly odh_url="https://x-access-token:${ODH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          main_sha="$(git rev-parse HEAD)"
-          readonly main_sha
-
-          # Validate both credentials before changing any refs.
-          git ls-remote --exit-code --heads "$downstream_url" main >/dev/null
-          git ls-remote --exit-code --heads "$odh_url" main >/dev/null
-
-          git ls-remote --heads "$downstream_url" |
-            awk '$2 ~ /^refs\/heads\/rhoai-[0-9]+\.[0-9]+(-ea\.[0-9]+)?$/ { print $1, $2 }' |
-            while read -r downstream_sha downstream_ref; do
-              branch="${downstream_ref#refs/heads/}"
-              if git ls-remote --exit-code --heads "$odh_url" "refs/heads/${branch}" >/dev/null; then
-                echo "Skipping existing ODH ref ${branch}."
-                continue
-              fi
-
-              echo "Source ref: ${downstream_ref} (${downstream_sha})"
-              git push "$odh_url" "${main_sha}:refs/heads/${branch}"
-              echo "Created ODH ref: ${branch} (${main_sha})"
-              echo "PipelineRun: PAC is triggered by this push; inspect the OpenShift Pipelines console."
-            done
+          ODH_TOKEN: ${{ secrets.target-token || github.token }}
+          DOWNSTREAM_REPOSITORY: ${{ inputs.downstream-repository }}
+          MANIFEST_PREFIX: ${{ inputs.manifest-prefix }}
+          IMAGE_REPOSITORY: ${{ inputs.image-repository }}
+          EXCLUDED_BRANCHES: ${{ inputs.excluded-branches }}
+        run: uv run --script ../provisioner/.github/scripts/midstream-only-rhoai-releases.py

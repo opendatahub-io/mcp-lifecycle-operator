@@ -55,6 +55,8 @@ func TestMain(m *testing.M) {
 
 		f.WithNamespaceManagement(testenv, "kd")
 
+		f.RegisterDSCLifecycle(testenv)
+
 		return testenv
 	}))
 }

@@ -46,7 +46,7 @@ func TestGatewayConformanceConfigMapUpdateTriggersStatusUpdate(t *testing.T) {
 
 	feature := features.New("Gateway conformance: ConfigMap update triggers status update").
 		WithLabel(category.Label, category.Networking).
-		WithLabel(speed.Label, speed.Moderate).
+		WithLabel(speed.Label, speed.Slow).
 		WithLabel(scope.Label, scope.GatewayConformance).
 		Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 			ns := ctx.Value(f.NsKey).(string)
@@ -123,7 +123,7 @@ func TestGatewayConformanceRecoverAddressAssertion(t *testing.T) {
 
 	feature := features.New("Gateway conformance: recovery address assertion").
 		WithLabel(category.Label, category.Networking).
-		WithLabel(speed.Label, speed.Moderate).
+		WithLabel(speed.Label, speed.Slow).
 		WithLabel(scope.Label, scope.GatewayConformance).
 		Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 			ns := ctx.Value(f.NsKey).(string)
