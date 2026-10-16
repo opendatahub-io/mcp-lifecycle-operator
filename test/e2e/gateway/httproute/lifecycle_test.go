@@ -21,12 +21,14 @@ package httproute
 import (
 	f "github.com/kubernetes-sigs/mcp-lifecycle-operator/test/e2e/framework"
 	"github.com/kubernetes-sigs/mcp-lifecycle-operator/test/e2e/framework/labels/scope"
+	"github.com/kubernetes-sigs/mcp-lifecycle-operator/test/e2e/framework/labels/speed"
 )
 
 func init() {
 	f.RegisterPackage("httproute", f.PackageRegistration{
 		Labels: map[string][]string{
 			scope.Label: {scope.HTTPRoute},
+			speed.Label: {speed.Slow},
 		},
 	})
 	f.RegisterPackageLifecycle(f.DefaultTier, "httproute", &envoyGatewayLifecycle{})

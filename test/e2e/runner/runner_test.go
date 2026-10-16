@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
+	"slices"
 	"strings"
 	"testing"
 
@@ -113,7 +115,7 @@ printf '%%s' %q > "$junit"
 	return result, suites, string(invocation)
 }
 
-func TestRunnerIdentityDefaultsToMCPLO(t *testing.T) {
+func TestRunnerIdentityDefaultsToOperator(t *testing.T) {
 	result, suites, invocation := runJUnitReportWithIdentity(t, "", "")
 	if result.ExitCode != 0 {
 		t.Fatalf("expected fake gotestsum to succeed, got %d", result.ExitCode)
@@ -125,8 +127,8 @@ func TestRunnerIdentityDefaultsToMCPLO(t *testing.T) {
 	for _, property := range suites.Properties {
 		properties[property.Name] = property.Value
 	}
-	if properties["repo"] != "mcplo" {
-		t.Fatalf("expected default derived repo abbreviation, got %q", properties["repo"])
+	if properties["repo"] != "operator" {
+		t.Fatalf("expected default repo abbreviation, got %q", properties["repo"])
 	}
 	if !strings.Contains(invocation, "--junitfile-project-name mcp-lifecycle-operator") {
 		t.Fatalf("expected gotestsum project name from default component, got %q", invocation)
@@ -134,21 +136,21 @@ func TestRunnerIdentityDefaultsToMCPLO(t *testing.T) {
 }
 
 func TestRunnerIdentityUsesCodeConfigurationAndDerivedRepoAbbreviation(t *testing.T) {
-	result, suites, invocation := runJUnitReportWithIdentity(t, "custom-component", "")
+	result, suites, invocation := runJUnitReportWithIdentity(t, "mcp-lifecycle-dev-console", "")
 	if result.ExitCode != 0 {
 		t.Fatalf("expected fake gotestsum to succeed, got %d", result.ExitCode)
 	}
-	if suites.Name != "custom-component" {
+	if suites.Name != "mcp-lifecycle-dev-console" {
 		t.Fatalf("expected code-configured component, got %q", suites.Name)
 	}
 	properties := map[string]string{}
 	for _, property := range suites.Properties {
 		properties[property.Name] = property.Value
 	}
-	if properties["repo"] != "customc" {
+	if properties["repo"] != "mcpldc" {
 		t.Fatalf("expected repo abbreviation derived from component, got %q", properties["repo"])
 	}
-	if !strings.Contains(invocation, "--junitfile-project-name custom-component") {
+	if !strings.Contains(invocation, "--junitfile-project-name mcp-lifecycle-dev-console") {
 		t.Fatalf("expected gotestsum project name from component, got %q", invocation)
 	}
 }
@@ -193,7 +195,7 @@ func assertJUnitSemantics(t *testing.T, suites junitSuites, rhoai bool) {
 	t.Helper()
 	assertJUnitRootCounters(t, suites)
 	if rhoai {
-		assertRhoAIJUnitSemantics(t, suites)
+		assertRhoAIJUnitSemantics(t, suites, "Mcplo")
 		return
 	}
 	assertVerbatimJUnitSemantics(t, suites)
@@ -206,7 +208,7 @@ func assertJUnitRootCounters(t *testing.T, suites junitSuites) {
 	}
 }
 
-func assertRhoAIJUnitSemantics(t *testing.T, suites junitSuites) {
+func assertRhoAIJUnitSemantics(t *testing.T, suites junitSuites, classname string) {
 	t.Helper()
 	if suites.Name != "mcp-lifecycle-operator" || len(suites.Suites) != 1 || suites.Suites[0].Name != "Mcp Lifecycle Operator" {
 		t.Fatalf("unexpected rhoai root/suite: %+v", suites)
@@ -216,7 +218,7 @@ func assertRhoAIJUnitSemantics(t *testing.T, suites junitSuites) {
 		t.Fatalf("unexpected rhoai suite counters: %+v", suite)
 	}
 	for _, caseResult := range suite.Cases {
-		if caseResult.Classname != "Mcplo" || caseResult.Time <= 0 {
+		if caseResult.Classname != classname || caseResult.Time <= 0 {
 			t.Errorf("case identity/timing not rewritten: %+v", caseResult)
 		}
 	}
@@ -322,7 +324,8 @@ func TestJUnitReportDefaultsRepoAbbr(t *testing.T) {
 	if result.ExitCode != 0 {
 		t.Fatalf("expected default repoabbr to succeed, got %d", result.ExitCode)
 	}
-	assertJUnitSemantics(t, suites, true)
+	assertJUnitRootCounters(t, suites)
+	assertRhoAIJUnitSemantics(t, suites, "Operator")
 }
 
 func TestJUnitReportEnvironmentOverridesReportMode(t *testing.T) {
@@ -496,6 +499,63 @@ printf '%%s' '<testsuites name="gotestsum" tests="0" failures="0" skipped="0" ti
 		if !strings.Contains(logs, exp) {
 			t.Errorf("expected log output to contain %q\ngot: %s", exp, logs)
 		}
+	}
+}
+
+func TestRunGotestsumEnvironment(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		version string
+	}{
+		{name: "unset"},
+		{name: "empty"},
+		{name: "explicit", version: "go1.99.0-custom"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("GOVERSION", tc.version)
+			if tc.name == "unset" {
+				if err := os.Unsetenv("GOVERSION"); err != nil {
+					t.Fatal(err)
+				}
+			}
+			t.Setenv("RUNNER_INHERITED", "caller-value")
+			parentEnv := os.Environ()
+			tmpDir := t.TempDir()
+			gotestsumBin := filepath.Join(tmpDir, "gotestsum")
+			script := `#!/bin/sh
+printf '%s\n%s\n' "$GOVERSION" "$RUNNER_INHERITED"
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = "--junitfile" ]; then junit="$2"; shift 2; continue; fi
+  shift
+done
+printf '%s' '<testsuites tests="0"></testsuites>' > "$junit"
+`
+			if err := os.WriteFile(gotestsumBin, []byte(script), 0o755); err != nil {
+				t.Fatal(err)
+			}
+
+			var stdout, stderr bytes.Buffer
+			r := runner.New()
+			r.Stdout = &stdout
+			r.Stderr = &stderr
+			r.GotestsumBin = gotestsumBin
+			r.ArtifactsDir = tmpDir
+			r.Packages = []runner.TestPackage{{Name: "e2e", Binary: "/tmp/e2e-tests"}}
+			if result := r.Run(nil); result.ExitCode != 0 {
+				t.Fatalf("expected exit code 0, got %d\nstderr: %s", result.ExitCode, &stderr)
+			}
+
+			wantVersion := tc.version
+			if wantVersion == "" {
+				wantVersion = runtime.Version()
+			}
+			if want := wantVersion + "\ncaller-value\n"; stdout.String() != want {
+				t.Errorf("gotestsum environment output = %q, want %q", stdout.String(), want)
+			}
+			if !slices.Equal(os.Environ(), parentEnv) {
+				t.Error("runner changed the parent environment")
+			}
+		})
 	}
 }
 
