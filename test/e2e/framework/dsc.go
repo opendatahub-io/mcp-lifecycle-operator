@@ -242,6 +242,13 @@ const (
 	// DSCComponentMCPLO is the mcplifecycleoperator component/stanza key under
 	// the DataScienceCluster spec and status.
 	DSCComponentMCPLO = componentPath
+
+	// ConditionMCPLOReady is the DataScienceCluster status.conditions type that
+	// reports the mcplifecycleoperator component as ready. The ODH module sets it
+	// True only once the operand deployment is Available, so it is the
+	// customer-facing readiness signal (and implies the conversion webhook is
+	// serving).
+	ConditionMCPLOReady = condMCPLifecycleOperator
 )
 
 // FindDataScienceCluster returns the name of the singleton DataScienceCluster
@@ -260,6 +267,16 @@ func FindDataScienceCluster(ctx context.Context, cl cr.Client) (string, bool, er
 		return "", false, nil
 	}
 	return list.Items[0].GetName(), true, nil
+}
+
+// WaitForMCPLOReady polls until the DataScienceCluster reports the
+// MCPLifecycleOperatorReady condition (ConditionMCPLOReady) as True. This is the
+// customer-facing readiness signal for the mcplifecycleoperator component: the
+// ODH module reports it only after the operand deployment is Available, so it
+// also implies the operator's conversion webhook endpoints are serving. It reuses
+// the same condition wait as the e2e suite's DSC bring-up (MaybeEnsureDSCManaged).
+func WaitForMCPLOReady(ctx context.Context, cl cr.Client, dscName string, timeout time.Duration) error {
+	return waitForDSCCondition(ctx, cl, dscName, condMCPLifecycleOperator, timeout)
 }
 
 // SetMCPLOManagementState patches the mcplifecycleoperator managementState on
