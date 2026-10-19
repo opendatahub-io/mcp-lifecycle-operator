@@ -79,6 +79,19 @@ func waitDSCComponentStatus(ctx context.Context, t *testing.T, c ctrlclient.Clie
 	t.Logf("DSC %s status.components.%s.managementState settled to %s", dscName, f.DSCComponentMCPLO, expected)
 }
 
+// waitDSCMCPLOReady waits until the DSC reports the customer-facing
+// MCPLifecycleOperatorReady condition as True via the shared framework helper,
+// failing the test on timeout. This is the signal customers rely on and, because
+// the ODH module reports it only after the operand deployment is Available, it
+// also guarantees the operator's conversion webhook is serving.
+func waitDSCMCPLOReady(ctx context.Context, t *testing.T, c ctrlclient.Client, dscName string, timeout time.Duration) {
+	t.Helper()
+	if err := f.WaitForMCPLOReady(ctx, c, dscName, timeout); err != nil {
+		t.Fatalf("timed out after %s waiting for DSC %s %s=True: %v", timeout, dscName, f.ConditionMCPLOReady, err)
+	}
+	t.Logf("DSC %s reports %s=True", dscName, f.ConditionMCPLOReady)
+}
+
 // resolveMapping returns the preferred REST mapping for a GroupKind, or nil if
 // the kind is not registered on the cluster (CRD not installed).
 func resolveMapping(c ctrlclient.Client, group, kind string) (*meta.RESTMapping, error) {
