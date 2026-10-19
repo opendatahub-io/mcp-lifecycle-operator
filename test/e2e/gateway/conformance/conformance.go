@@ -64,7 +64,7 @@ func runBindingLifecycle(t *testing.T, testenv env.Environment, prov Provider) {
 
 	feature := features.New("Gateway conformance: binding lifecycle").
 		WithLabel(category.Label, category.Networking).
-		WithLabel(speed.Label, speed.Moderate).
+		WithLabel(speed.Label, speed.Slow).
 		WithLabel(scope.Label, scope.GatewayConformance).
 		Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 			ns := ctx.Value(f.NsKey).(string)
@@ -136,7 +136,7 @@ func runRemoval(t *testing.T, testenv env.Environment, prov Provider) {
 
 	feature := features.New("Gateway conformance: removal").
 		WithLabel(category.Label, category.Networking).
-		WithLabel(speed.Label, speed.Moderate).
+		WithLabel(speed.Label, speed.Slow).
 		WithLabel(scope.Label, scope.GatewayConformance).
 		Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 			ns := ctx.Value(f.NsKey).(string)
@@ -209,7 +209,7 @@ func runHTTPReachability(t *testing.T, testenv env.Environment, prov Provider) {
 
 	feature := features.New("Gateway conformance: HTTP reachability").
 		WithLabel(category.Label, category.Networking).
-		WithLabel(speed.Label, speed.Moderate).
+		WithLabel(speed.Label, speed.Slow).
 		WithLabel(scope.Label, scope.GatewayConformance).
 		Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 			ns := ctx.Value(f.NsKey).(string)
@@ -263,7 +263,7 @@ func runHostnameSeparation(t *testing.T, testenv env.Environment, prov Provider)
 
 	feature := features.New("Gateway conformance: hostname separation").
 		WithLabel(category.Label, category.Networking).
-		WithLabel(speed.Label, speed.Moderate).
+		WithLabel(speed.Label, speed.Slow).
 		WithLabel(scope.Label, scope.GatewayConformance).
 		Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 			ns := ctx.Value(f.NsKey).(string)
@@ -334,7 +334,7 @@ func runRecovery(t *testing.T, testenv env.Environment, prov Provider) {
 
 	feature := features.New("Gateway conformance: recover on ConfigMap update").
 		WithLabel(category.Label, category.Networking).
-		WithLabel(speed.Label, speed.Moderate).
+		WithLabel(speed.Label, speed.Slow).
 		WithLabel(scope.Label, scope.GatewayConformance).
 		Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 			ns := ctx.Value(f.NsKey).(string)

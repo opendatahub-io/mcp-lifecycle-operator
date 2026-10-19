@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -213,6 +214,9 @@ func (r *Runner) orchestrate(args []string) Result {
 	r.logf("running: %s %s", r.GotestsumBin, strings.Join(cmdArgs, " "))
 
 	cmd := exec.Command(r.GotestsumBin, cmdArgs...)
+	if os.Getenv("GOVERSION") == "" {
+		cmd.Env = append(os.Environ(), "GOVERSION="+runtime.Version())
+	}
 	cmd.Stdout = r.Stdout
 	cmd.Stderr = r.Stderr
 	cmd.Stdin = os.Stdin
@@ -254,6 +258,9 @@ func (r *Runner) orchestrate(args []string) Result {
 }
 
 func deriveRepoAbbr(component string) string {
+	if component == defaultComponent {
+		return "operator"
+	}
 	parts := strings.Split(component, "-")
 	var abbreviation strings.Builder
 	abbreviation.WriteString(parts[0])

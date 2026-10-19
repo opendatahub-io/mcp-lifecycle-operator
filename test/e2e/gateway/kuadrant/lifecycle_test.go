@@ -21,12 +21,14 @@ package kuadrant
 import (
 	f "github.com/kubernetes-sigs/mcp-lifecycle-operator/test/e2e/framework"
 	"github.com/kubernetes-sigs/mcp-lifecycle-operator/test/e2e/framework/labels/scope"
+	"github.com/kubernetes-sigs/mcp-lifecycle-operator/test/e2e/framework/labels/speed"
 )
 
 func init() {
 	f.RegisterPackage("kuadrant", f.PackageRegistration{
 		Labels: map[string][]string{
 			scope.Label: {scope.Kuadrant},
+			speed.Label: {speed.Slow},
 		},
 	})
 	f.RegisterPackageLifecycle(f.DefaultTier, "kuadrant", &istioLifecycle{})

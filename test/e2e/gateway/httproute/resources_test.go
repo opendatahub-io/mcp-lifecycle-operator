@@ -42,7 +42,7 @@ func TestHTTPRouteProviderResources(t *testing.T) {
 
 	feature := features.New("HTTPRoute provider: resources").
 		WithLabel(category.Label, category.Networking).
-		WithLabel(speed.Label, speed.Moderate).
+		WithLabel(speed.Label, speed.Slow).
 		WithLabel(scope.Label, scope.HTTPRoute).
 		Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 			ns := ctx.Value(f.NsKey).(string)
@@ -121,7 +121,7 @@ func TestHTTPRouteFallbackToRouteHostname(t *testing.T) {
 
 	feature := features.New("HTTPRoute: fallback to route-hostname").
 		WithLabel(category.Label, category.Networking).
-		WithLabel(speed.Label, speed.Moderate).
+		WithLabel(speed.Label, speed.Slow).
 		WithLabel(scope.Label, scope.HTTPRoute).
 		Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 			ns := ctx.Value(f.NsKey).(string)
@@ -172,7 +172,7 @@ func TestHTTPRouteFallbackToGatewayAddress(t *testing.T) {
 
 	feature := features.New("HTTPRoute: fallback to gateway address").
 		WithLabel(category.Label, category.Networking).
-		WithLabel(speed.Label, speed.Moderate).
+		WithLabel(speed.Label, speed.Slow).
 		WithLabel(scope.Label, scope.HTTPRoute).
 		Setup(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 			ns := ctx.Value(f.NsKey).(string)
