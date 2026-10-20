@@ -32,10 +32,12 @@ const (
 	DefaultServiceAccountName = "mcp-lifecycle-operator-controller-manager"
 	DefaultMetricsServiceName = "mcp-lifecycle-operator-controller-manager-metrics-service"
 
-	// OperatorPodSelector matches the controller-manager pod. These labels come
-	// from config/manager/manager.yaml and are preserved wherever the operator
-	// is deployed (including as a downstream module).
-	OperatorPodSelector = "control-plane=controller-manager,app.kubernetes.io/name=mcp-lifecycle-operator"
+	// OperatorControllerSelector is the label selector that identifies the
+	// operator controller-manager workload (its pod and its Deployment carry the
+	// same labels). It is the single source of truth shared by operator discovery
+	// and by tests that need to locate the controller (e.g. NetworkPolicy posture
+	// detection), so the label contract lives in exactly one place.
+	OperatorControllerSelector = "control-plane=controller-manager,app.kubernetes.io/name=mcp-lifecycle-operator"
 )
 
 func (r *Registry) ensureDefaults() {
@@ -73,7 +75,7 @@ func FromPodLabels(ctx context.Context, cfg *envconf.Config) (OperatorRef, error
 	r := cfg.Client().Resources()
 	var pods corev1.PodList
 	if err := r.List(ctx, &pods,
-		resources.WithLabelSelector(OperatorPodSelector),
+		resources.WithLabelSelector(OperatorControllerSelector),
 	); err != nil {
 		return OperatorRef{}, fmt.Errorf("listing pods: %w", err)
 	}

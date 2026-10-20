@@ -156,7 +156,7 @@ func resolveOperatorNamespace(ctx context.Context, t *testing.T, cfg *envconf.Co
 	var namespace string
 	err := wait.For(func(ctx context.Context) (bool, error) {
 		var pods corev1.PodList
-		if err := cfg.Client().Resources().List(ctx, &pods, resources.WithLabelSelector(f.OperatorPodSelector)); err != nil {
+		if err := cfg.Client().Resources().List(ctx, &pods, resources.WithLabelSelector(f.OperatorControllerSelector)); err != nil {
 			// Transient list error; retry on the next tick.
 			return false, nil
 		}
@@ -175,7 +175,7 @@ func resolveOperatorNamespace(ctx context.Context, t *testing.T, cfg *envconf.Co
 	)
 	if err != nil {
 		t.Fatalf("timed out after %s locating a Running operator pod (selector %q); set MCPLO_NAMESPACE if the operator is deployed elsewhere: %v",
-			timeout, f.OperatorPodSelector, err)
+			timeout, f.OperatorControllerSelector, err)
 	}
 	return namespace
 }
@@ -186,7 +186,7 @@ func resolveOperatorNamespace(ctx context.Context, t *testing.T, cfg *envconf.Co
 func operatorPodsPresent(ctx context.Context, cfg *envconf.Config, namespace string) (bool, error) {
 	r := cfg.Client().Resources(namespace)
 	var pods corev1.PodList
-	if err := r.List(ctx, &pods, resources.WithLabelSelector(f.OperatorPodSelector)); err != nil {
+	if err := r.List(ctx, &pods, resources.WithLabelSelector(f.OperatorControllerSelector)); err != nil {
 		return false, err
 	}
 	return len(pods.Items) > 0, nil
@@ -197,7 +197,7 @@ func operatorPodsPresent(ctx context.Context, cfg *envconf.Config, namespace str
 func operatorPodRunning(ctx context.Context, cfg *envconf.Config, namespace string) (bool, error) {
 	r := cfg.Client().Resources(namespace)
 	var pods corev1.PodList
-	if err := r.List(ctx, &pods, resources.WithLabelSelector(f.OperatorPodSelector)); err != nil {
+	if err := r.List(ctx, &pods, resources.WithLabelSelector(f.OperatorControllerSelector)); err != nil {
 		return false, err
 	}
 	for i := range pods.Items {
