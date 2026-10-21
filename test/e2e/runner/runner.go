@@ -284,8 +284,6 @@ func (r *Runner) execPackages(args []string) int {
 		cmdArgs = append(cmdArgs, "-t", "-p", pkg.Name, pkg.Binary)
 		cmdArgs = append(cmdArgs, testArgs...)
 
-		r.logf("running: %s %s", r.Test2JSONBin, strings.Join(cmdArgs, " "))
-
 		cmd := exec.Command(r.Test2JSONBin, cmdArgs...)
 		cmd.Stdout = r.Stdout
 		cmd.Stderr = r.Stderr
