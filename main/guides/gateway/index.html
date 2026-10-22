@@ -7,7 +7,7 @@
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
 <link href="https://mcp-lifecycle-operator.sigs.k8s.io/main/guides/gateway/" rel="canonical"/>
 <link href="../" rel="prev"/>
-<link href="../quickstart/" rel="next"/>
+<link href="../kuadrant-architecture/" rel="next"/>
 <link href="../../images/favicon-64.png" rel="icon"/>
 <meta content="mkdocs-1.6.1, mkdocs-material-9.7.7" name="generator"/>
 <title>Gateway Integration - MCP Lifecycle Operator</title>
@@ -459,6 +459,18 @@
 </li>
 </ul>
 </nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../kuadrant-architecture/">
+<span class="md-ellipsis">
+    
+  
+    Kuadrant MCP Gateway Architecture
+  
+
+    
+  </span>
+</a>
 </li>
 <li class="md-nav__item">
 <a class="md-nav__link" href="../quickstart/">
@@ -1039,6 +1051,7 @@
 </span></code></pre></div>
 <h2 id="kuadrant-provider-kuadrant">Kuadrant Provider: <code>kuadrant</code><a class="headerlink" href="#kuadrant-provider-kuadrant" title="Permanent link">¶</a></h2>
 <p>The operator includes an integration controller for the <code>kuadrant</code> provider, which registers MCP servers with the <a href="https://docs.kuadrant.io/latest/mcp-gateway/">Kuadrant MCP Gateway</a>. It creates a Gateway API HTTPRoute and a Kuadrant <code>MCPServerRegistration</code> resource that enables the MCP Gateway broker to discover and federate the server's tools and prompts.</p>
+<p>For components, Gateway and extension setup, listener selection, and request flow diagrams, see <a href="../kuadrant-architecture/">Kuadrant MCP Gateway Architecture</a>.</p>
 <h3 id="prerequisites_1">Prerequisites<a class="headerlink" href="#prerequisites_1" title="Permanent link">¶</a></h3>
 <ul>
 <li><a href="https://gateway-api.sigs.k8s.io/guides/#installing-gateway-api">Gateway API CRDs</a> installed on the cluster</li>
