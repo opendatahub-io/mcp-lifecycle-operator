@@ -38,6 +38,12 @@ func gatewayServer(configRef string, network *mcpv1beta1.NetworkConfig) *mcpv1be
 	return s
 }
 
+func kuadrantGatewayServer(configRef string, network *mcpv1beta1.NetworkConfig) *mcpv1beta1.MCPServer {
+	s := postureTestServer("gw-server", network)
+	s.Spec.Gateway = &mcpv1beta1.GatewaySpec{Provider: "kuadrant", ConfigRef: configRef}
+	return s
+}
+
 func gatewayNamespacePeer(namespace string) []networkingv1.NetworkPolicyPeer {
 	return []networkingv1.NetworkPolicyPeer{
 		{
@@ -112,6 +118,7 @@ func TestDefaultIngressRulesGatewayPeer(t *testing.T) {
 
 func TestGatewayIngressPeers(t *testing.T) {
 	const gwNamespace = "gateway-system"
+	const extNamespace = "mcp-system"
 
 	configMap := func(name string, data map[string]string) *corev1.ConfigMap {
 		return &corev1.ConfigMap{
@@ -141,11 +148,11 @@ func TestGatewayIngressPeers(t *testing.T) {
 			want:    nil,
 		},
 		{
-			name:    "non-httproute provider stays deny-by-default even with a resolvable ConfigMap",
+			name:    "unknown provider stays deny-by-default",
 			posture: PostureRestricted,
 			server: func() *mcpv1beta1.MCPServer {
 				s := gatewayServer("gw-config", nil)
-				s.Spec.Gateway.Provider = "kuadrant"
+				s.Spec.Gateway.Provider = "unknown"
 				return s
 			}(),
 			objects: []client.Object{configMap("gw-config", map[string]string{gatewayConfigKeyNamespace: gwNamespace})},
@@ -192,6 +199,42 @@ func TestGatewayIngressPeers(t *testing.T) {
 			server:  gatewayServer("gw-config", nil),
 			objects: []client.Object{configMap("gw-config", map[string]string{gatewayConfigKeyNamespace: "  " + gwNamespace + "  "})},
 			want:    gatewayNamespacePeer(gwNamespace),
+		},
+		{
+			name:    "kuadrant resolves extension-namespace into a peer",
+			posture: PostureRestricted,
+			server:  kuadrantGatewayServer("gw-config", nil),
+			objects: []client.Object{configMap("gw-config", map[string]string{kuadrantConfigKeyExtensionNamespace: extNamespace})},
+			want:    gatewayNamespacePeer(extNamespace),
+		},
+		{
+			name:    "kuadrant missing ConfigMap falls back to deny-by-default",
+			posture: PostureRestricted,
+			server:  kuadrantGatewayServer("absent", nil),
+			want:    nil,
+		},
+		{
+			name:    "kuadrant without extension-namespace key falls back to deny-by-default",
+			posture: PostureRestricted,
+			server:  kuadrantGatewayServer("gw-config", nil),
+			objects: []client.Object{configMap("gw-config", map[string]string{"extension-name": "my-ext"})},
+			want:    nil,
+		},
+		{
+			name:    "kuadrant ignores gateway-namespace key",
+			posture: PostureRestricted,
+			server:  kuadrantGatewayServer("gw-config", nil),
+			objects: []client.Object{configMap("gw-config", map[string]string{gatewayConfigKeyNamespace: gwNamespace})},
+			want:    nil,
+		},
+		{
+			name:    "kuadrant explicit IngressFrom takes precedence",
+			posture: PostureRestricted,
+			server: kuadrantGatewayServer("gw-config", &mcpv1beta1.NetworkConfig{
+				IngressFrom: []networkingv1.NetworkPolicyPeer{{PodSelector: &metav1.LabelSelector{}}},
+			}),
+			objects: []client.Object{configMap("gw-config", map[string]string{kuadrantConfigKeyExtensionNamespace: extNamespace})},
+			want:    nil,
 		},
 	}
 
