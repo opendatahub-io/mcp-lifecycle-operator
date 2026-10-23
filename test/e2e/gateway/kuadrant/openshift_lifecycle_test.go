@@ -23,5 +23,6 @@ import (
 )
 
 func init() {
-	f.RegisterPackageLifecycle(f.PlatformTier, "kuadrant", &mcpGatewayOLMLifecycle{})
+	f.RegisterPackageLifecycle(f.PlatformTier, "kuadrant", &ossmLifecycle{})
+	f.RegisterPackageLifecycle(f.PlatformTier, "kuadrant", &rhclLifecycle{})
 }
