@@ -606,10 +606,10 @@ func TestExecRunsTest2JSONForEachPackage(t *testing.T) {
 	}
 	got := string(argsBytes)
 
-	// Each package line: "-t -p <name> <binary> -test.count=2 -test.v=test2json -test.run=TestFoo"
+	// Each binary receives a native timeout as well as the existing flags.
 	expects := []string{
-		"-t -p e2e " + binary1 + " -test.count=2 -test.v=test2json -test.run=TestFoo",
-		"-t -p integration " + binary2 + " -test.count=2 -test.v=test2json -test.run=TestFoo",
+		"-t -p e2e " + binary1 + " -test.timeout=30m0s -test.count=2 -test.v=test2json -test.run=TestFoo",
+		"-t -p integration " + binary2 + " -test.timeout=30m0s -test.count=2 -test.v=test2json -test.run=TestFoo",
 	}
 	for _, exp := range expects {
 		if !strings.Contains(got, exp) {

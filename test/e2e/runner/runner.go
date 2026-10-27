@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 )
 
 const (
@@ -17,6 +18,7 @@ const (
 	defaultArtifactsDir = "/artifacts"
 	defaultResultsDir   = "e2e-results"
 	defaultGotestsumBin = "gotestsum"
+	defaultTestTimeout  = 30 * time.Minute
 )
 
 // TestPackages is set at build time via -ldflags:
@@ -74,6 +76,7 @@ type Runner struct {
 	Component    string
 	RepoAbbr     string
 	ReportMode   string
+	TestTimeout  time.Duration
 }
 
 // New returns an uninitialized, caller-configurable Runner.
@@ -158,6 +161,17 @@ func (r *Runner) initialize() error {
 	r.Test2JSONBin = envOr("E2E_TEST2JSON_BIN", r.Test2JSONBin)
 	r.TestCount = envOr("E2E_COUNT", r.TestCount)
 
+	if value, ok := os.LookupEnv("E2E_PACKAGE_TIMEOUT"); ok {
+		duration, err := time.ParseDuration(value)
+		if err != nil {
+			return fmt.Errorf("invalid E2E_PACKAGE_TIMEOUT %q: %w", value, err)
+		}
+		r.TestTimeout = duration
+	}
+	if r.TestTimeout == 0 {
+		r.TestTimeout = defaultTestTimeout
+	}
+
 	reportMode, err := parseJUnitReportMode(r.ReportMode)
 	if err != nil {
 		return err
@@ -214,8 +228,11 @@ func (r *Runner) orchestrate(args []string) Result {
 	r.logf("running: %s %s", r.GotestsumBin, strings.Join(cmdArgs, " "))
 
 	cmd := exec.Command(r.GotestsumBin, cmdArgs...)
+	// The executor is a new Runner in another process. Carry the resolved default
+	// across that boundary, including a caller-configured TestTimeout.
+	cmd.Env = append(os.Environ(), "E2E_PACKAGE_TIMEOUT="+r.TestTimeout.String())
 	if os.Getenv("GOVERSION") == "" {
-		cmd.Env = append(os.Environ(), "GOVERSION="+runtime.Version())
+		cmd.Env = append(cmd.Env, "GOVERSION="+runtime.Version())
 	}
 	cmd.Stdout = r.Stdout
 	cmd.Stderr = r.Stderr
@@ -273,7 +290,20 @@ func deriveRepoAbbr(component string) string {
 }
 
 func (r *Runner) execPackages(args []string) int {
-	testArgs := make([]string, 0, 2+len(args))
+	hasTimeout := false
+	for _, arg := range args {
+		if arg == "--" {
+			break
+		}
+		if arg == "-test.timeout" || strings.HasPrefix(arg, "-test.timeout=") {
+			hasTimeout = true
+			break
+		}
+	}
+	testArgs := make([]string, 0, 3+len(args))
+	if !hasTimeout && r.TestTimeout >= 0 {
+		testArgs = append(testArgs, "-test.timeout="+r.TestTimeout.String())
+	}
 	testArgs = append(testArgs, "-test.count="+r.TestCount, "-test.v=test2json")
 	testArgs = append(testArgs, args...)
 
