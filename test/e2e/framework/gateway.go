@@ -199,6 +199,11 @@ func EnsureMultiListenerGateway(ctx context.Context, t *testing.T, cfg *envconf.
 		if !apierrors.IsAlreadyExists(err) {
 			t.Fatalf("failed to create Gateway %s/%s: %v", namespace, name, err)
 		}
+		existing := &gatewayv1.Gateway{}
+		if err := r.Get(ctx, name, namespace, existing); err != nil {
+			t.Fatalf("failed to get existing Gateway %s/%s: %v", namespace, name, err)
+		}
+		gw.ResourceVersion = existing.ResourceVersion
 		if err := r.Update(ctx, gw); err != nil {
 			t.Fatalf("failed to update existing Gateway %s/%s: %v", namespace, name, err)
 		}

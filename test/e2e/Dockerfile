@@ -23,6 +23,10 @@ RUN CGO_ENABLED=1 GOEXPERIMENT=strictfipsruntime \
     GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
     go test -c -race -tags=e2e -o /e2e-tests ./test/e2e/
 
+RUN CGO_ENABLED=1 GOEXPERIMENT=strictfipsruntime \
+    GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+    go test -c -race -tags=e2e,openshift -o /e2e-gateway-kuadrant ./test/e2e/gateway/kuadrant/
+
 # Disruptive suite lives in its own package behind the `disruptive` build tag so
 # it never compiles into the regular -tags=e2e binary above. It reuses the
 # (untagged) test/e2e/framework package, so -tags=disruptive is sufficient.
@@ -40,13 +44,14 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
 # JUnit XML reporting. Format: "pkg=binary,pkg2=binary2". Add new entries
 # when splitting e2e tests into subpackages.
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-    go build -ldflags="-X 'github.com/kubernetes-sigs/mcp-lifecycle-operator/test/e2e/runner.TestPackages=e2e=/e2e/e2e-tests,disruptive=/e2e/disruptive-tests'" \
+    go build -ldflags="-X 'github.com/kubernetes-sigs/mcp-lifecycle-operator/test/e2e/runner.TestPackages=e2e=/e2e/e2e-tests,gateway-kuadrant=/e2e/e2e-gateway-kuadrant,disruptive=/e2e/disruptive-tests'" \
     -o /e2e-run ./test/e2e/cmd/run/
 
 FROM --platform=$TARGETPLATFORM ${BASE_IMAGE}
 ARG USER_ID=65532
 WORKDIR /e2e
 COPY --from=builder /e2e-tests .
+COPY --from=builder /e2e-gateway-kuadrant .
 COPY --from=builder /disruptive-tests .
 COPY --from=builder /gotestsum /usr/local/bin/gotestsum
 COPY --from=builder /test2json /usr/local/bin/test2json
