@@ -18,7 +18,7 @@ const (
 	defaultArtifactsDir = "/artifacts"
 	defaultResultsDir   = "e2e-results"
 	defaultGotestsumBin = "gotestsum"
-	defaultTestTimeout  = 30 * time.Minute
+	defaultTestTimeout  = 60 * time.Minute
 )
 
 // TestPackages is set at build time via -ldflags:

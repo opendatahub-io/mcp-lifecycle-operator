@@ -27,8 +27,8 @@ func TestFixture(t *testing.T) {
 	t.Log("fixture test output")
 	switch os.Getenv("RUNNER_FIXTURE_PHASE") {
 	case "default-timeout":
-		if got := flag.Lookup("test.timeout").Value.String(); got != "30m0s" {
-			t.Fatalf("native timeout = %s, want 30m0s", got)
+		if got := flag.Lookup("test.timeout").Value.String(); got != "1h0m0s" {
+			t.Fatalf("native timeout = %s, want 1h0m0s", got)
 		}
 	case "no-timeout":
 		for _, arg := range os.Args[1:] {

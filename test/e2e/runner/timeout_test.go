@@ -34,11 +34,11 @@ func TestNativeTimeoutConfiguration(t *testing.T) {
 		want    time.Duration
 		invalid bool
 	}{
-		{name: "zero caller", field: 0, want: 30 * time.Minute},
+		{name: "zero caller", field: 0, want: 60 * time.Minute},
 		{name: "caller", field: time.Hour, want: time.Hour},
 		{name: "environment", field: time.Hour, env: "2m3s", setEnv: true, want: 123 * time.Second},
 		{name: "negative caller", field: -time.Second, want: -time.Second},
-		{name: "zero environment", field: time.Hour, env: "0", setEnv: true, want: 30 * time.Minute},
+		{name: "zero environment", field: time.Hour, env: "0", setEnv: true, want: 60 * time.Minute},
 		{name: "negative environment", field: time.Hour, env: "-1s", setEnv: true, want: -time.Second},
 		{name: "empty environment", setEnv: true, invalid: true},
 		{name: "malformed environment", env: "forever", setEnv: true, invalid: true},
@@ -78,11 +78,11 @@ func TestNativeTimeoutForwarding(t *testing.T) {
 		args  []string
 		want  string
 	}{
-		{name: "default", want: "30m0s"},
+		{name: "default", want: "1h0m0s"},
 		{name: "caller", field: time.Hour, want: "1h0m0s"},
 		{name: "negative caller", field: -time.Second},
 		{name: "negative environment", env: "-1s"},
-		{name: "zero environment", field: time.Hour, env: "0", want: "30m0s"},
+		{name: "zero environment", field: time.Hour, env: "0", want: "1h0m0s"},
 		{name: "negative with equals flag", field: -time.Second, args: []string{"-test.timeout=1h"}},
 		{name: "negative with separate flag", env: "-1s", args: []string{"-test.timeout", "0"}},
 		{name: "environment", field: time.Hour, env: "2m", want: "2m0s"},
@@ -94,9 +94,9 @@ func TestNativeTimeoutForwarding(t *testing.T) {
 		{name: "repeated explicit unchanged", args: []string{"-test.timeout=1h", "-test.timeout", "0"}},
 		{name: "invalid explicit unchanged", args: []string{"-test.timeout=forever"}},
 		{name: "missing explicit value unchanged", args: []string{"-test.timeout"}},
-		{name: "other flags unchanged", args: []string{"-test.run=TestFoo", "-test.timeout-extra=1h"}, want: "30m0s"},
-		{name: "equals after separator", args: []string{"--", "-test.timeout=1h"}, want: "30m0s"},
-		{name: "separate after separator", args: []string{"--", "-test.timeout", "1h"}, want: "30m0s"},
+		{name: "other flags unchanged", args: []string{"-test.run=TestFoo", "-test.timeout-extra=1h"}, want: "1h0m0s"},
+		{name: "equals after separator", args: []string{"--", "-test.timeout=1h"}, want: "1h0m0s"},
+		{name: "separate after separator", args: []string{"--", "-test.timeout", "1h"}, want: "1h0m0s"},
 		{name: "explicit before separator", args: []string{"-test.timeout=1h", "--", "-test.timeout=0"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
