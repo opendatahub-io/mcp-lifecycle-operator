@@ -69,6 +69,8 @@ func TestMain(m *testing.M) {
 		f.BusyboxImage,
 	))
 
+	f.RegisterDSCLifecycle(testenv)
+
 	// Create a unique namespace before each test, dump diagnostics on
 	// failure, then delete it after.
 	f.WithNamespaceManagement(testenv, "e2e")

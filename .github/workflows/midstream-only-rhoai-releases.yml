@@ -1,0 +1,68 @@
+name: Provision RHOAI release branches
+
+on:
+  schedule:
+    - cron: '17 */2 * * *'
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      downstream-repository:
+        description: Downstream owner/repository whose release branch names are mirrored
+        type: string
+      manifest-prefix:
+        description: Tekton filename prefix, with E2E filenames derived by adding -e2e
+        type: string
+      image-repository:
+        description: Operator image repository, with the E2E image derived by adding -e2e
+        type: string
+      excluded-branches:
+        description: Newline- or comma-delimited exact branch names to skip (empty excludes none)
+        type: string
+    secrets:
+      target-token:
+        description: Optional App token with contents write access to the caller repository
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: provision-rhoai-branches-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  provision:
+    if: github.repository_owner == 'opendatahub-io'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out target main
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          repository: ${{ github.repository }}
+          ref: main
+          path: target
+          token: ${{ secrets.target-token || github.token }}
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Check out shared provisioner
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: provisioner
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+
+      - name: Create missing release branches
+        working-directory: target
+        env:
+          ODH_TOKEN: ${{ secrets.target-token || github.token }}
+          DOWNSTREAM_REPOSITORY: ${{ inputs.downstream-repository }}
+          MANIFEST_PREFIX: ${{ inputs.manifest-prefix }}
+          IMAGE_REPOSITORY: ${{ inputs.image-repository }}
+          EXCLUDED_BRANCHES: ${{ inputs.excluded-branches }}
+        run: uv run --script ../provisioner/.github/scripts/midstream-only-rhoai-releases.py
