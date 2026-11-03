@@ -71,6 +71,14 @@ names, JSON array formatting), which is preserved without rewriting:
  && !(target_branch in ["rhoai-3.5", "rhoai-3.6-ea.1", "rhoai-3.6-ea.2"])
 ```
 
+Ordinary E2E push images must publish `odh-stable`, either as the primary
+`output-image` tag or through `additional-tags`. The primary tag may be `main`
+or `odh-stable`; additional tags may contain either. Publishing `main` is
+optional: its absence emits a workflow warning, not an error. The image
+repository remains strictly validated, and all other image/tag contracts
+remain unchanged. Validation checks configured publication, not live registry
+contents or build success.
+
 All templates are validated before any rewritten files are written. Unexpected
 YAML or missing/malformed templates abort provisioning.
 

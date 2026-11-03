@@ -249,13 +249,33 @@ def rewrite_tekton_filters(branch: str, tekton_dir: Path) -> None:
         params = params_for(document, file)
         image_param = named_param(params, "output-image", file)
         expected_image = images[filename]
-        if image_param.get("value") != expected_image:
-            fail(f"Expected output image {expected_image!r} in {file}")
+        allowed_images = (
+            (expected_image, f"{repository}-e2e:odh-stable")
+            if filename == e2e_push_file
+            else (expected_image,)
+        )
+        if image_param.get("value") not in allowed_images:
+            fail(f"Expected output image in {allowed_images!r} in {file}")
         changed = filename in rewrite_files
         if filename == e2e_push_file:
-            tags = named_param(params, "additional-tags", file).get("value")
-            if tags != ["odh-stable"]:
-                fail(f"Expected exactly the odh-stable additional tag in {file}")
+            tags = [param for param in params if param.get("name") == "additional-tags"]
+            if len(tags) > 1:
+                fail(f"Expected at most one additional-tags parameter in {file}")
+            additional_tags = tags[0].get("value") if tags else []
+            if not isinstance(additional_tags, list) or any(
+                tag not in ("main", "odh-stable") for tag in additional_tags
+            ):
+                fail(
+                    f"Expected additional-tags to contain only main or odh-stable in {file}"
+                )
+            published_tags = [image_param["value"].rsplit(":", 1)[1], *additional_tags]
+            if "odh-stable" not in published_tags:
+                fail(f"Expected odh-stable to be published in {file}")
+            if "main" not in published_tags:
+                print(
+                    f"::warning title=E2E image tags::Optional main tag is not published in {file}",
+                    file=sys.stderr,
+                )
         elif filename == operator_push_file or filename in release_files:
             tags = [param for param in params if param.get("name") == "additional-tags"]
             if len(tags) > 1 or (tags and tags[0].get("value") not in (None, [])):

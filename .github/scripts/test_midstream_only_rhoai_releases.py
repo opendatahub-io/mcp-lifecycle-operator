@@ -142,6 +142,114 @@ def test_rewrites_only_pull_request_predicates(tmp_path: Path) -> None:
     ] == ["odh-stable"]
 
 
+@pytest.mark.parametrize(
+    "prefix", ["odh-mcp-lifecycle-operator", "odh-mcp-lifecycle-module-operator"]
+)
+@pytest.mark.parametrize(
+    ("primary", "additional", "warn"),
+    [
+        ("main", ["odh-stable"], False),
+        ("odh-stable", None, True),
+        ("odh-stable", [], True),
+        ("odh-stable", ["main"], False),
+        ("odh-stable", ["odh-stable"], True),
+        ("main", ["main", "odh-stable"], False),
+    ],
+)
+def test_e2e_push_requires_stable_and_warns_for_missing_main(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    prefix: str,
+    primary: str,
+    additional: list[str] | None,
+    warn: bool,
+) -> None:
+    tekton_dir = copy_manifests(tmp_path)
+    for source in tuple(tekton_dir.glob("*.yaml")):
+        content = source.read_text().replace(
+            implementation.DEFAULT_MANIFEST_PREFIX, prefix
+        )
+        target = source.with_name(
+            source.name.replace(implementation.DEFAULT_MANIFEST_PREFIX, prefix)
+        )
+        source.unlink()
+        target.write_text(content)
+    repository = f"quay.io/opendatahub/{prefix}"
+    monkeypatch.setenv("MANIFEST_PREFIX", prefix)
+    monkeypatch.setenv("IMAGE_REPOSITORY", repository)
+    file = tekton_dir / f"{prefix}-e2e-push.yaml"
+    document = read_document(file)
+    params = document["spec"]["params"]
+    params[:] = [param for param in params if param["name"] != "additional-tags"]
+    next(param for param in params if param["name"] == "output-image")["value"] = (
+        f"{repository}-e2e:{primary}"
+    )
+    if additional is not None:
+        params.append({"name": "additional-tags", "value": additional})
+    with file.open("w") as stream:
+        YAML(typ="rt").dump(document, stream)
+    before = file.read_bytes()
+
+    implementation.rewrite_tekton_filters(BRANCH, tekton_dir)
+
+    assert file.read_bytes() == before
+    warnings = capsys.readouterr().err
+    assert ("::warning" in warnings) is warn
+    if warn:
+        assert "Optional main tag is not published" in warnings
+        assert str(file) in warnings
+
+
+@pytest.mark.parametrize(
+    ("image", "additional"),
+    [
+        ("quay.io/opendatahub/odh-mcp-lifecycle-operator-e2e:main", []),
+        ("quay.io/opendatahub/odh-mcp-lifecycle-operator-e2e:main", None),
+        ("quay.io/opendatahub/odh-mcp-lifecycle-operator-e2e:other", ["odh-stable"]),
+        ("quay.io/other/image:odh-stable", ["main"]),
+        ("quay.io/opendatahub/odh-mcp-lifecycle-operator-e2e:odh-stable", "main"),
+        ("quay.io/opendatahub/odh-mcp-lifecycle-operator-e2e:odh-stable", [1]),
+        ("quay.io/opendatahub/odh-mcp-lifecycle-operator-e2e:odh-stable", ["other"]),
+    ],
+)
+def test_rejects_unsafe_e2e_push_tags_without_writing(
+    tmp_path: Path, image: str, additional: object
+) -> None:
+    tekton_dir = copy_manifests(tmp_path)
+    file = tekton_dir / implementation.E2E_PUSH_FILE
+    document = read_document(file)
+    params = document["spec"]["params"]
+    params[:] = [param for param in params if param["name"] != "additional-tags"]
+    next(param for param in params if param["name"] == "output-image")["value"] = image
+    if additional is not None:
+        params.append({"name": "additional-tags", "value": additional})
+    with file.open("w") as stream:
+        YAML(typ="rt").dump(document, stream)
+    before = {path.name: path.read_bytes() for path in tekton_dir.glob("*.yaml")}
+
+    with pytest.raises(implementation.ProvisioningError):
+        implementation.rewrite_tekton_filters(BRANCH, tekton_dir)
+
+    assert {
+        path.name: path.read_bytes() for path in tekton_dir.glob("*.yaml")
+    } == before
+
+
+def test_rejects_duplicate_e2e_additional_tags(tmp_path: Path) -> None:
+    tekton_dir = copy_manifests(tmp_path)
+    file = tekton_dir / implementation.E2E_PUSH_FILE
+    document = read_document(file)
+    document["spec"]["params"].append({"name": "additional-tags", "value": ["main"]})
+    with file.open("w") as stream:
+        YAML(typ="rt").dump(document, stream)
+
+    with pytest.raises(
+        implementation.ProvisioningError, match="at most one additional-tags"
+    ):
+        implementation.rewrite_tekton_filters(BRANCH, tekton_dir)
+
+
 def test_preserves_unrelated_yaml_semantics_and_documents(tmp_path: Path) -> None:
     tekton_dir = copy_manifests(tmp_path)
     multi_doc = (
