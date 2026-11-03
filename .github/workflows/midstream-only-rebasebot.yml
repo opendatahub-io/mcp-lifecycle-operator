@@ -4,6 +4,7 @@ on:
   schedule:
     - cron: '0 10,14 * * 1-5'
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: write
@@ -15,13 +16,15 @@ concurrency:
 
 jobs:
   rebasebot:
-    if: github.repository == 'opendatahub-io/mcp-lifecycle-operator' && github.ref == 'refs/heads/main'
+    if: github.repository_owner == 'opendatahub-io' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - name: Check out workflow scripts
+      - name: Check out shared workflow scripts
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
           persist-credentials: false
 
       - name: Set up uv
