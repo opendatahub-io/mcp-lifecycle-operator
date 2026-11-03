@@ -1,0 +1,49 @@
+name: Sync main into latest RHOAI release
+
+on:
+  schedule:
+    - cron: '0 10,14 * * 1-5'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: rebasebot-latest-rhoai-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  rebasebot:
+    if: github.repository == 'opendatahub-io/mcp-lifecycle-operator' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out workflow scripts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+
+      - name: Sync latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          branch=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/branches?per_page=100" --jq '.[].name' |
+            python3 .github/scripts/latest-rhoai-release.py)
+          echo "Syncing main into $branch" >> "$GITHUB_STEP_SUMMARY"
+          token_file=$(mktemp "${RUNNER_TEMP}/rebasebot-token.XXXXXX")
+          trap 'rm -f "$token_file"' EXIT
+          printf '%s' "$GH_TOKEN" > "$token_file"
+          uvx --from 'git+https://github.com/openshift-eng/rebasebot@main' rebasebot \
+            --source "https://github.com/${GITHUB_REPOSITORY}:main" \
+            --dest "${GITHUB_REPOSITORY}:${branch}" \
+            --rebase "${GITHUB_REPOSITORY}:rebase-bot-${branch}" \
+            --sync-mode merge \
+            --github-user-token "$token_file" \
+            --git-username 'github-actions[bot]' \
+            --git-email '41898282+github-actions[bot]@users.noreply.github.com' \
+            --working-dir "${RUNNER_TEMP}/rebasebot"
