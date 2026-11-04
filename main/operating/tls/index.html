@@ -897,10 +897,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#x25519mlkem768-availability" class="md-nav__link">
+  <a href="#group-availability-and-go-upgrades" class="md-nav__link">
     <span class="md-ellipsis">
       
-        X25519MLKEM768 availability
+        Group availability and Go upgrades
       
     </span>
   </a>
@@ -1126,10 +1126,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#x25519mlkem768-availability" class="md-nav__link">
+  <a href="#group-availability-and-go-upgrades" class="md-nav__link">
     <span class="md-ellipsis">
       
-        X25519MLKEM768 availability
+        Group availability and Go upgrades
       
     </span>
   </a>
@@ -1238,14 +1238,14 @@
 </tr>
 </tbody>
 </table>
-<p>Unset variables leave Go's defaults in place. Unknown or malformed values are <strong>skipped with a log line</strong> rather than failing startup, and the operator falls back to the default for that setting.</p>
+<p>Unset or empty variables leave Go's defaults in place. Unknown TLS versions and cipher suites are skipped with a log line. Unknown group names are also skipped, but a nonempty <code>TLS_GROUPS</code> value with no recognized groups causes startup to fail. This prevents an explicit group restriction from silently reverting to Go's defaults.</p>
 <div class="admonition warning">
 <p class="admonition-title">TLS 1.3 manages cipher suites automatically</p>
 <p>When <code>TLS_MIN_VERSION=VersionTLS13</code>, Go selects the TLS 1.3 cipher suites itself and any <code>TLS_CIPHER_SUITES</code> value is ignored. Cipher-suite pinning only affects TLS 1.0-1.2.</p>
 </div>
 <h2 id="tls-13-named-groups-tls_groups">TLS 1.3 named groups (<code>TLS_GROUPS</code>)<a class="headerlink" href="#tls-13-named-groups-tls_groups" title="Permanent link">&para;</a></h2>
 <p>TLS 1.3 decoupled key exchange from cipher suites: the named groups (elliptic curves and key-exchange groups, including the post-quantum hybrid <code>X25519MLKEM768</code>) are negotiated separately through the <code>supported_groups</code> / <code>key_share</code> extensions. <code>TLS_GROUPS</code> sets the operator's preference order for those groups; it is applied as <code>tls.Config.CurvePreferences</code> on both the serving endpoints and the MCP-server client connection.</p>
-<p>Names are matched <strong>case-insensitively</strong> and accept the Go canonical name plus the common IANA / OpenSSL aliases, so a value taken from a platform TLS policy needs no translation. Unrecognized names are skipped, and the accepted names are de-duplicated and re-emitted in canonical form.</p>
+<p>Names are matched <strong>case-insensitively</strong> and accept the Go canonical name plus the common IANA / OpenSSL aliases, so a value taken from a platform TLS policy needs no translation. Unrecognized names are skipped, and the accepted names are de-duplicated and re-emitted in canonical form. A mixed list uses only its recognized groups. A nonempty list containing only unknown names, whitespace, or separators causes startup to fail.</p>
 <table>
 <thead>
 <tr>
@@ -1278,20 +1278,26 @@
 <tr>
 <td><code>X25519MLKEM768</code></td>
 <td>-</td>
-<td>Post-quantum hybrid key exchange. See availability below.</td>
+<td>X25519 with ML-KEM-768.</td>
+</tr>
+<tr>
+<td><code>SecP256r1MLKEM768</code></td>
+<td>-</td>
+<td>P-256 with ML-KEM-768.</td>
+</tr>
+<tr>
+<td><code>SecP384r1MLKEM1024</code></td>
+<td>-</td>
+<td>P-384 with ML-KEM-1024.</td>
 </tr>
 </tbody>
 </table>
 <p>Example - prefer the PQC hybrid, then X25519, then P-256:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>TLS_GROUPS=X25519MLKEM768,X25519,CurveP256
 </span></code></pre></div>
-<h3 id="x25519mlkem768-availability"><code>X25519MLKEM768</code> availability<a class="headerlink" href="#x25519mlkem768-availability" title="Permanent link">&para;</a></h3>
-<p><code>X25519MLKEM768</code> is a TLS 1.3-only hybrid that combines X25519 with the ML-KEM-768 post-quantum KEM. Two conditions must hold for it to be negotiated:</p>
-<ul>
-<li>The operator binary must be built with the <strong>Go 1.24</strong> toolchain or newer, where <code>X25519MLKEM768</code> was added to the standard library and enabled by default.</li>
-<li>Under a FIPS build that routes crypto through the system OpenSSL provider, ML-KEM availability additionally depends on that provider supporting the group.</li>
-</ul>
-<p>If either condition is not met, listing <code>X25519MLKEM768</code> is harmless - it is simply not offered, and the remaining groups in the list are used.</p>
+<h3 id="group-availability-and-go-upgrades">Group availability and Go upgrades<a class="headerlink" href="#group-availability-and-go-upgrades" title="Permanent link">&para;</a></h3>
+<p>The parser derives canonical names from the build toolchain's <code>crypto/tls.CurveID.String()</code> method and accepts the aliases listed above. The accepted names can change with Go upgrades. Discovering a new name does not guarantee compatibility with peers or operands built with an older toolchain. Numeric IDs and <code>CurveID(&lt;number&gt;)</code> strings are not accepted.</p>
+<p>Group recognition does not guarantee negotiation: the peer must support the group, hybrid groups require TLS 1.3, and runtime restrictions such as FIPS mode or a system crypto provider can further limit availability. These restrictions do not restore excluded groups.</p>
 <h3 id="the-client-path-tls-12-floor">The client-path TLS 1.2 floor<a class="headerlink" href="#the-client-path-tls-12-floor" title="Permanent link">&para;</a></h3>
 <p>The connection the operator opens to each MCP server is built with a <strong>minimum version of TLS 1.2</strong>. The TLS profile can <em>raise</em> that floor (setting <code>TLS_MIN_VERSION=VersionTLS13</code> requires TLS 1.3 for these connections) but never <em>lower</em> it, so a permissive <code>TLS_MIN_VERSION</code> cannot silently downgrade the operator's outbound handshakes below TLS 1.2.</p>
 <p>Group preferences and the <code>X25519MLKEM768</code> hybrid only take effect once TLS 1.3 is actually negotiated. Because the client keeps the TLS 1.2 floor by default, it can still reach MCP servers that do not speak TLS 1.3 - those connections simply fall back to the classic (non-PQC) curves.</p>
