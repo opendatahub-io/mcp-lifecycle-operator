@@ -925,6 +925,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#servicereference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ServiceReference
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#source" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -995,6 +1006,28 @@
     <span class="md-ellipsis">
       
         TransportConfig
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#workloadkind" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WorkloadKind
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#workloadreference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WorkloadReference
       
     </span>
   </a>
@@ -1562,6 +1595,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#servicereference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ServiceReference
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#source" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1632,6 +1676,28 @@
     <span class="md-ellipsis">
       
         TransportConfig
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#workloadkind" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WorkloadKind
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#workloadreference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WorkloadReference
       
     </span>
   </a>
@@ -2043,16 +2109,28 @@ MCP server during the protocol handshake (initialize or server/discover).</p>
 <td>Optional: {} <br /></td>
 </tr>
 <tr>
-<td><code>source</code> <em><a href="#source">Source</a></em></td>
-<td>Source is a required field that defines where the MCP server should be sourced from.<br />Currently supports container images, with potential for additional source types in the future.<br />This configuration determines how the MCP server will be deployed and run.</td>
+<td><code>workloadRef</code> <em><a href="#workloadreference">WorkloadReference</a></em></td>
+<td>WorkloadRef references an external Deployment, DaemonSet, or StatefulSet<br />in the same namespace. When set, the operator monitors the referenced<br />workload read-only and never creates its own Deployment.<br />Mutually exclusive with source and operator-managed workload fields.<br />Cannot be added or removed after creation; create a new MCPServer to switch<br />between managed and BYO workloads. The referenced name and kind may change.</td>
 <td></td>
-<td>Required: {} <br /></td>
+<td>Optional: {} <br /></td>
+</tr>
+<tr>
+<td><code>serviceRef</code> <em><a href="#servicereference">ServiceReference</a></em></td>
+<td>ServiceRef references an external Service in the same namespace.<br />When set, the operator skips Service creation and uses the referenced<br />Service for the MCP endpoint URL.</td>
+<td></td>
+<td>Optional: {} <br /></td>
+</tr>
+<tr>
+<td><code>source</code> <em><a href="#source">Source</a></em></td>
+<td>Source defines where the MCP server should be sourced from.<br />Currently supports container images, with potential for additional source types in the future.<br />Required when workloadRef is not set.</td>
+<td></td>
+<td>Optional: {} <br /></td>
 </tr>
 <tr>
 <td><code>config</code> <em><a href="#serverconfig">ServerConfig</a></em></td>
-<td>Config is a required field that defines how the MCP server should be configured when it runs.<br />This includes runtime settings such as the server port, command-line arguments,<br />environment variables, and storage mounts.</td>
+<td>Config defines how the MCP server should be configured when it runs.<br />This includes runtime settings such as the server port, command-line arguments,<br />environment variables, and storage mounts.<br />May be omitted in BYO mode when workloadRef and serviceRef are set.</td>
 <td></td>
-<td>Required: {} <br /></td>
+<td>Optional: {} <br /></td>
 </tr>
 <tr>
 <td><code>runtime</code> <em><a href="#runtimeconfig">RuntimeConfig</a></em></td>
@@ -2114,7 +2192,19 @@ MCP server during the protocol handshake (initialize or server/discover).</p>
 </tr>
 <tr>
 <td><code>serviceName</code> <em>string</em></td>
-<td>ServiceName is the name of the Service created for this MCPServer.</td>
+<td>ServiceName is the name of the Service backing this MCPServer.<br />For operator-managed mode this is the created Service; for BYO this<br />is the serviceRef name, or the MCPServer name when serviceRef is unset.</td>
+<td></td>
+<td>Optional: {} <br /></td>
+</tr>
+<tr>
+<td><code>workloadName</code> <em>string</em></td>
+<td>WorkloadName identifies the workload backing this MCPServer.<br />For BYO: "{Kind}/{Name}" (e.g. "DaemonSet/my-ds").<br />Empty for operator-managed workloads (use DeploymentName instead).</td>
+<td></td>
+<td>Optional: {} <br /></td>
+</tr>
+<tr>
+<td><code>workloadSummary</code> <em>string</em></td>
+<td>WorkloadSummary is a human-readable summary for the print column.<br />For BYO: "BYO:{Kind}/{Name}". For operator-managed: the container image ref.</td>
 <td></td>
 <td>Optional: {} <br /></td>
 </tr>
@@ -2138,13 +2228,13 @@ MCP server during the protocol handshake (initialize or server/discover).</p>
 </tr>
 <tr>
 <td><code>replicas</code> <em>integer</em></td>
-<td>Replicas is the total number of desired pods targeted by the owned Deployment.</td>
+<td>Replicas is the total number of desired instances for this MCPServer.<br />For operator-managed mode this reflects the owned Deployment; for BYO<br />this reflects the referenced workload (Deployment, DaemonSet, or StatefulSet).</td>
 <td></td>
 <td>Optional: {} <br /></td>
 </tr>
 <tr>
 <td><code>readyReplicas</code> <em>integer</em></td>
-<td>ReadyReplicas is the number of pods targeted by the owned Deployment with a Ready condition.</td>
+<td>ReadyReplicas is the number of healthy instances for this MCPServer.<br />For operator-managed mode this reflects the owned Deployment; for BYO<br />this reflects the referenced workload.</td>
 <td></td>
 <td>Optional: {} <br /></td>
 </tr>
@@ -2345,9 +2435,9 @@ See individual field documentation for specific defaults.</p>
 <tbody>
 <tr>
 <td><code>port</code> <em>integer</em></td>
-<td>Port is a required field that specifies the port number on which the MCP server listens for connections.<br />Must be between 1 and 65535.<br />This should match the port that the MCP server container exposes and will be used for<br />configuring the Kubernetes Service.</td>
+<td>Port specifies the port number on which the MCP server listens for connections.<br />Must be between 1 and 65535.<br />For operator-managed workloads, this is the container port; a referenced<br />Service may expose a different port, which is resolved from that Service.<br />Required for operator-managed workloads or when serviceRef is not set.<br />When both workloadRef and serviceRef are set and port is omitted,<br />the port is resolved from the referenced Service.</td>
 <td></td>
-<td>Maximum: 65535 <br />Minimum: 1 <br />Required: {} <br /></td>
+<td>Maximum: 65535 <br />Minimum: 1 <br />Optional: {} <br /></td>
 </tr>
 <tr>
 <td><code>arguments</code> <em>string array</em></td>
@@ -2378,6 +2468,28 @@ See individual field documentation for specific defaults.</p>
 <td>Path is the HTTP path where the MCP server listens for SSE/Streamable HTTP connections.<br />This path is appended to the service address in the status URL.<br />Must be a valid URI path component starting with '/'.<br />Maximum 253 characters. Cannot contain spaces, control characters, or query/fragment separators (? #).<br />Examples: /mcp, /api/v1/mcp, /services/mcp-server<br />Defaults to /mcp if not specified.</td>
 <td>/mcp</td>
 <td>MaxLength: 253 <br />MinLength: 1 <br />Optional: {} <br /></td>
+</tr>
+</tbody>
+</table>
+<h4 id="servicereference">ServiceReference<a class="headerlink" href="#servicereference" title="Permanent link">&para;</a></h4>
+<p>ServiceReference references an external Service in the same namespace.</p>
+<p><em>Appears in:</em>
+- <a href="#mcpserverspec">MCPServerSpec</a></p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+<th>Default</th>
+<th>Validation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code> <em>string</em></td>
+<td>Name of the Service resource.</td>
+<td></td>
+<td>MinLength: 1 <br />Required: {} <br /></td>
 </tr>
 </tbody>
 </table>
@@ -2590,6 +2702,63 @@ operator-to-MCP-server communication.</p>
 <td>TLS configures TLS for operator-to-MCP-server communication<br />during handshake and discovery probes.</td>
 <td></td>
 <td>Optional: {} <br /></td>
+</tr>
+</tbody>
+</table>
+<h4 id="workloadkind">WorkloadKind<a class="headerlink" href="#workloadkind" title="Permanent link">&para;</a></h4>
+<p><em>Underlying type:</em> <em>string</em></p>
+<p>WorkloadKind defines the type of workload resource for BYO workloads.</p>
+<p><em>Validation:</em>
+- Enum: [Deployment DaemonSet StatefulSet]</p>
+<p><em>Appears in:</em>
+- <a href="#workloadreference">WorkloadReference</a></p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Deployment</code></td>
+<td>WorkloadKindDeployment indicates a Deployment workload.<br /></td>
+</tr>
+<tr>
+<td><code>DaemonSet</code></td>
+<td>WorkloadKindDaemonSet indicates a DaemonSet workload.<br /></td>
+</tr>
+<tr>
+<td><code>StatefulSet</code></td>
+<td>WorkloadKindStatefulSet indicates a StatefulSet workload.<br /></td>
+</tr>
+</tbody>
+</table>
+<h4 id="workloadreference">WorkloadReference<a class="headerlink" href="#workloadreference" title="Permanent link">&para;</a></h4>
+<p>WorkloadReference references an external workload resource in the same namespace.</p>
+<p><em>Appears in:</em>
+- <a href="#mcpserverspec">MCPServerSpec</a></p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+<th>Default</th>
+<th>Validation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code> <em>string</em></td>
+<td>Name of the workload resource.</td>
+<td></td>
+<td>MinLength: 1 <br />Required: {} <br /></td>
+</tr>
+<tr>
+<td><code>kind</code> <em><a href="#workloadkind">WorkloadKind</a></em></td>
+<td>Kind of the workload resource.</td>
+<td></td>
+<td>Enum: [Deployment DaemonSet StatefulSet] <br />Required: {} <br /></td>
 </tr>
 </tbody>
 </table>
