@@ -19,6 +19,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -340,6 +341,18 @@ type HealthConfig struct {
 // See individual field documentation for specific defaults.
 // +kubebuilder:validation:MinProperties=1
 type RuntimeConfig struct {
+	// Strategy controls rollout of the operator-managed Deployment.
+	// When omitted or removed, defaults to RollingUpdate with maxSurge and
+	// maxUnavailable both set to 25%. This does not provide session-aware draining.
+	// With workloadRef, configure the strategy on the referenced workload instead.
+	// +optional
+	// +kubebuilder:validation:XValidation:rule="!has(self.type) || self.type in ['', 'RollingUpdate', 'Recreate']",message="strategy.type must be RollingUpdate or Recreate"
+	// +kubebuilder:validation:XValidation:rule="!has(self.type) || self.type != 'Recreate' || !has(self.rollingUpdate)",message="rollingUpdate must not be set for Recreate"
+	// +kubebuilder:validation:XValidation:rule="!has(self.rollingUpdate) || !has(self.rollingUpdate.maxSurge) || (type(self.rollingUpdate.maxSurge) == int ? self.rollingUpdate.maxSurge >= 0 : self.rollingUpdate.maxSurge.matches('^[0-9]+%$'))",message="maxSurge must be a non-negative integer or percentage"
+	// +kubebuilder:validation:XValidation:rule="!has(self.rollingUpdate) || !has(self.rollingUpdate.maxUnavailable) || (type(self.rollingUpdate.maxUnavailable) == int ? self.rollingUpdate.maxUnavailable >= 0 : self.rollingUpdate.maxUnavailable.matches('^(100|[0-9]{1,2})%$'))",message="maxUnavailable must be a non-negative integer or percentage between 0% and 100%"
+	// +kubebuilder:validation:XValidation:rule="!has(self.rollingUpdate) || !has(self.rollingUpdate.maxSurge) || !has(self.rollingUpdate.maxUnavailable) || (type(self.rollingUpdate.maxSurge) == int ? self.rollingUpdate.maxSurge != 0 : !self.rollingUpdate.maxSurge.matches('^0+%$')) || (type(self.rollingUpdate.maxUnavailable) == int ? self.rollingUpdate.maxUnavailable != 0 : !self.rollingUpdate.maxUnavailable.matches('^0+%$'))",message="maxSurge and maxUnavailable must not both be zero"
+	Strategy *appsv1.DeploymentStrategy `json:"strategy,omitempty"`
+
 	// Replicas is the number of MCP server pod replicas to run.
 	// Defaults to 1 if not specified.
 	// Set to 0 to scale down the deployment.
@@ -435,6 +448,7 @@ type NetworkConfig struct {
 // +kubebuilder:validation:XValidation:rule="!has(self.workloadRef) || !has(self.config) || !has(self.config.envFrom)",message="config.envFrom must not be set when workloadRef is set"
 // +kubebuilder:validation:XValidation:rule="!has(self.workloadRef) || !has(self.config) || !has(self.config.arguments)",message="config.arguments must not be set when workloadRef is set"
 // +kubebuilder:validation:XValidation:rule="!has(self.workloadRef) || !has(self.runtime) || !has(self.runtime.replicas)",message="runtime.replicas must not be set when workloadRef is set"
+// +kubebuilder:validation:XValidation:rule="!has(self.workloadRef) || !has(self.runtime) || !has(self.runtime.strategy)",message="runtime.strategy must not be set when workloadRef is set"
 // +kubebuilder:validation:XValidation:rule="!has(self.workloadRef) || !has(self.runtime) || !has(self.runtime.resources)",message="runtime.resources must not be set when workloadRef is set"
 // +kubebuilder:validation:XValidation:rule="!has(self.workloadRef) || !has(self.runtime) || !has(self.runtime.security)",message="runtime.security must not be set when workloadRef is set"
 // +kubebuilder:validation:XValidation:rule="!has(self.workloadRef) || !has(self.runtime) || !has(self.runtime.health)",message="runtime.health must not be set when workloadRef is set"
@@ -584,7 +598,7 @@ type MCPConfig struct {
 type MCPServerAddress struct {
 	// URL is the address of the MCP server.
 	// When no gateway is configured, this is the cluster-internal service address
-	// (e.g. <scheme>://<servicename>.<namespace>.svc.cluster.local:<port>/<path>).
+	// (e.g. <scheme>://<servicename>.<namespace>.svc.<cluster-domain>:<port>/<path>).
 	// The scheme is "https" when TLS is enabled, "http" otherwise.
 	// When a gateway provider is active, this is the external gateway address.
 	// +optional
@@ -677,6 +691,12 @@ type MCPServerStatus struct {
 	// +optional
 	Address *MCPServerAddress `json:"address,omitempty"`
 
+	// VerifiedEndpointURL is the internal Service URL for which Verified=True
+	// was established. Unlike Address, it is not replaced by a gateway URL.
+	// A changed or missing value requires endpoint verification again.
+	// +optional
+	VerifiedEndpointURL string `json:"verifiedEndpointURL,omitempty"`
+
 	// ServerInfo contains identity and capability information reported by the
 	// MCP server during the protocol handshake (initialize or server/discover).
 	// This field is populated only after a successful handshake.
@@ -744,9 +764,11 @@ type GatewayBindingStatus struct {
 
 // MCPServer runs a Model Context Protocol (MCP) server in Kubernetes.
 //
-// MCPServer creates and manages a Deployment, Service, and NetworkPolicy to run an MCP server from a
-// container image. The MCP server exposes tools, resources, and prompts that AI applications
-// can use via the Model Context Protocol.
+// By default, MCPServer creates and manages a Deployment, Service, and NetworkPolicy
+// to run an MCP server from a container image. WorkloadRef and ServiceRef can
+// instead reference existing resources managed outside the operator. The MCP
+// server exposes tools, resources, and prompts that AI applications can use via
+// the Model Context Protocol.
 //
 // Example:
 //
@@ -762,11 +784,12 @@ type GatewayBindingStatus struct {
 //	  config:
 //	    port: 8080
 //
-// The controller manages Deployment, Service, and NetworkPolicy resources with the same name as the MCPServer,
+// In managed mode, the controller manages Deployment, Service, and NetworkPolicy resources with the same name as the MCPServer,
 // using ownerReferences to establish ownership. The controller will reject updates to resources
 // owned by other controllers or resources with no controller owner (to prevent silent overwrites
 // of manually-created resources), but will adopt orphaned resources from a deleted MCPServer
-// with the same name to enable seamless recreation.
+// with the same name to enable seamless recreation. Referenced workloads and
+// Services remain under their existing management and are not adopted or deleted.
 type MCPServer struct {
 	metav1.TypeMeta `json:",inline"`
 

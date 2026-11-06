@@ -22,6 +22,8 @@ This page is aimed at **platform and cluster operators**. It is a hub that gathe
 
 The operator creates a `NetworkPolicy` for every managed MCP server pod. Out of the box that policy allows **any pod in the cluster** to reach the server port and lets the server pod egress **anywhere**. For production, and to align with the NSA CSI MCP Security guidance on designing for boundaries, restrict both directions through `spec.network`.
 
+For an [existing workload referenced through `workloadRef`](../guides/byo.md), the operator does not create a NetworkPolicy and `spec.network` is rejected. Manage isolation separately and permit the operator's endpoint verification traffic, along with required client and gateway traffic.
+
 ```yaml
 apiVersion: mcp.x-k8s.io/v1beta1
 kind: MCPServer
@@ -66,7 +68,7 @@ spec:
     The operator can be started with `--network-policy-default-posture=restricted`. Under that posture an MCPServer that omits `spec.network.ingressFrom` gets a **deny-all** ingress policy instead of the open default. This deny only takes effect where a NetworkPolicy-enforcing network plugin (CNI) is installed - without one the policy has no effect and untrusted pods can still reach the server. It is also **additive** with other NetworkPolicies: Kubernetes unions the ingress rules of every policy that selects the pod, so a deny-all here does not override an allow rule from another applicable policy. Where the policy is enforced, the operator completes the MCP handshake by connecting to the server pod, so a deny-all ingress also blocks the operator itself (and any gateway): the server never reaches `Verified` and no `status.address` is published. Under restricted posture always set `ingressFrom` with peers that match the operator pods and every gateway source that must reach the server - the operator never adds an implicit peer for itself. This flag only changes the default for *unconfigured* dimensions; an explicit `spec.network` value is always honored regardless of posture.
 
 !!! note "Observing the effective posture"
-    The open default is not silent. When the operator starts with the default `--network-policy-default-posture=open`, it logs a `WARNING:` advisory noting that servers without `ingressFrom` are reachable from any namespace and pointing at the restricted alternative. Independently of the flag, every MCPServer reports its applied posture in the `NetworkPolicyRestricted` status condition: `status: "True"` (reason `Restricted`) once both ingress sources and egress are constrained, and `status: "False"` (reason `Unrestricted`, `IngressUnrestricted`, or `EgressUnrestricted`) while either direction is still open. Watch that condition (`kubectl get mcpserver -o jsonpath='{.status.conditions}'`) to find servers still running with open ingress. The condition is informational and never gates readiness.
+    The open default is not silent. When the operator starts with the default `--network-policy-default-posture=open`, it logs a `WARNING:` advisory noting that servers without `ingressFrom` are reachable from any namespace and pointing at the restricted alternative. Independently of the flag, every MCPServer with an operator-managed workload reports its applied posture in the `NetworkPolicyRestricted` status condition: `status: "True"` (reason `Restricted`) once both ingress sources and egress are constrained, and `status: "False"` (reason `Unrestricted`, `IngressUnrestricted`, or `EgressUnrestricted`) while either direction is still open. Watch that condition (`kubectl get mcpserver -o jsonpath='{.status.conditions}'`) to find servers still running with open ingress. The condition is informational and never gates readiness.
 
 Peers use the standard Kubernetes `NetworkPolicyPeer` shape (`podSelector`, `namespaceSelector`, `ipBlock`); `ipBlock` cannot be combined with the selector fields. These constraints are checked during **reconciliation**, not by an admission webhook: an MCPServer with an invalid CIDR is still admitted by the API server and then reports a `ValidationError` status condition, so validate config before applying rather than relying on `kubectl apply` to reject it.
 
@@ -85,6 +87,18 @@ Set `spec.gateway.provider` and the operator manages an `MCPGatewayBinding` for 
 ## TLS & transport security
 
 The controller manager serves its webhook and metrics endpoints over TLS, and opens an outbound TLS connection to each managed server to verify the MCP handshake. Both surfaces read the same profile from `TLS_MIN_VERSION`, `TLS_CIPHER_SUITES`, and `TLS_GROUPS`.
+
+### Custom cluster DNS domains
+
+The operator uses `cluster.local` by default when constructing the in-cluster MCP Service URL. Clusters that use a different DNS domain must pass the domain to the manager, for example:
+
+```text
+--cluster-domain=cozy.local
+```
+
+The value must be a DNS subdomain, without a URL scheme, credentials, port, path, query, or fragment. The manager rejects invalid values at startup before connecting to Kubernetes. Surrounding whitespace, letter case, and a single trailing DNS root dot are normalized; an empty value uses `cluster.local`.
+
+The same value is used for handshake verification and for the published `status.address.url` when no gateway address overrides it. If a registered gateway supplies an address, that gateway address is published instead. Configure it on the manager Deployment before creating MCPServers on a custom-domain cluster.
 
 In production, pin these to your organization's crypto policy (or let a platform TLS profile such as an OpenShift `TLSSecurityProfile` supply them) instead of relying on Go defaults. The outbound client path enforces a TLS 1.2 floor that a permissive profile cannot lower.
 
@@ -133,6 +147,37 @@ The operator's ClusterRole grants cluster-wide `get;list;watch` on `secrets` and
 
 - **Replicas & resources** - the operator ships with a single replica and modest requests/limits (`cpu: 10m` / `memory: 128Mi` requests, `cpu: 500m` / `memory: 512Mi` limits). Size these for the number of managed servers in your cluster and load-test before committing to limits; see [Performance testing](#performance-testing).
 - **Storage-version migrations** - when upgrading across API storage versions, drive the migration deliberately rather than relying on lazy conversion. See the **[Storage Version Migration page](storage-version-migration.md)**.
+
+### MCP server rollout strategy
+
+For operator-managed Deployments, use `spec.runtime.strategy` to configure
+`RollingUpdate` or `Recreate`. For example:
+
+```yaml
+spec:
+  runtime:
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 1
+        maxUnavailable: 0
+```
+
+`maxSurge` and `maxUnavailable` accept non-negative integers or percentage strings
+such as `"25%"`. The percentage for `maxUnavailable` cannot exceed `100%`, and
+the two values cannot both be zero. Unspecified rolling-update values default
+to `25%`; an unspecified type defaults to `RollingUpdate`.
+
+To terminate the old pods before creating replacements during a rollout, set
+`type: Recreate` and omit `rollingUpdate`. Removing `strategy` restores
+`RollingUpdate` with both values at `25%`. The operator reconciles strategy
+changes on the managed Deployment, including correcting manual changes.
+
+When `spec.workloadRef` is set, configure the rollout strategy directly on the
+referenced workload. Combining `workloadRef` with `runtime.strategy` is rejected.
+
+These settings control Kubernetes rollout behavior. They do not implement
+MCP session draining or guarantee uninterrupted sessions.
 
 ### Performance testing
 

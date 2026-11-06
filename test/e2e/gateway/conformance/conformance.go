@@ -32,6 +32,7 @@ import (
 
 	mcpv1alpha1 "github.com/kubernetes-sigs/mcp-lifecycle-operator/api/v1alpha1"
 	mcpv1beta1 "github.com/kubernetes-sigs/mcp-lifecycle-operator/api/v1beta1"
+	mcpcontroller "github.com/kubernetes-sigs/mcp-lifecycle-operator/internal/controller"
 	f "github.com/kubernetes-sigs/mcp-lifecycle-operator/test/e2e/framework"
 	"github.com/kubernetes-sigs/mcp-lifecycle-operator/test/e2e/framework/labels/category"
 	"github.com/kubernetes-sigs/mcp-lifecycle-operator/test/e2e/framework/labels/scope"
@@ -57,6 +58,15 @@ func RunGatewayConformanceSuite(t *testing.T, testenv env.Environment, prov Prov
 	t.Run("recovery", func(t *testing.T) {
 		runRecovery(t, testenv, prov)
 	})
+	for _, tc := range []byoConfiguration{
+		{name: "BYO workload", externalWorkload: true},
+		{name: "BYO workload and Service", externalWorkload: true, externalService: true},
+		{name: "BYO Service", externalService: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			runBYO(t, testenv, prov, tc)
+		})
+	}
 }
 
 func runBindingLifecycle(t *testing.T, testenv env.Environment, prov Provider) {
@@ -217,6 +227,7 @@ func runHTTPReachability(t *testing.T, testenv env.Environment, prov Provider) {
 			gwAddr = prov.GatewayAddress(ctx, t, cfg)
 			configData := prov.ConfigData()
 			f.CreateGatewayConfigMap(ctx, t, cfg, configMapName, ns, configData)
+			createBackendPodReader(ctx, t, cfg.Client().Resources(), ns)
 			ctx = f.SetupMCPServer(ctx, t, cfg, "conformance-http", true,
 				f.WithGateway(prov.Name(), configMapName),
 				f.WithPath("/mcp"),
@@ -228,7 +239,7 @@ func runHTTPReachability(t *testing.T, testenv env.Environment, prov Provider) {
 			f.WaitForMCPServerCondition(ctx, t, r, server, "GatewayRegistered", metav1.ConditionTrue)
 			return ctx
 		}).
-		Assess("MCP handshake through gateway", func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+		Assess("backend tool call succeeds through gateway", func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 			server := f.ServerFromContext(ctx)
 			r := cfg.Client().Resources()
 
@@ -244,7 +255,8 @@ func runHTTPReachability(t *testing.T, testenv env.Environment, prov Provider) {
 				t.Fatalf("failed to parse status.address.url %q: %v", server.Status.Address.URL, err)
 			}
 
-			f.AssertMCPReachable(ctx, t, gwAddr, parsed.Hostname(), parsed.Path)
+			assertBackendPodListed(ctx, t, gwAddr, parsed.Hostname(), parsed.Path, server.Namespace, cfg.Client().Resources(),
+				map[string]string{mcpcontroller.LabelKeyMCPServer: server.Name})
 
 			return ctx
 		}).
@@ -273,6 +285,7 @@ func runHostnameSeparation(t *testing.T, testenv env.Environment, prov Provider)
 			configData["route-hostname"] = "internal.mcp.local"
 			configData["public-hostname"] = "public.example.com"
 			f.CreateGatewayConfigMap(ctx, t, cfg, configMapName, ns, configData)
+			createBackendPodReader(ctx, t, cfg.Client().Resources(), ns)
 			ctx = f.SetupMCPServer(ctx, t, cfg, "hostname-sep", true,
 				f.WithGateway(prov.Name(), configMapName),
 				f.WithPath("/mcp"),
@@ -317,8 +330,10 @@ func runHostnameSeparation(t *testing.T, testenv env.Environment, prov Provider)
 			t.Log("HTTPRoute correctly uses route-hostname: internal.mcp.local")
 			return ctx
 		}).
-		Assess("MCP server is reachable via route hostname", func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
-			f.AssertMCPReachable(ctx, t, gwAddr, "internal.mcp.local", "/mcp")
+		Assess("backend tool call succeeds via route hostname", func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+			server := f.ServerFromContext(ctx)
+			assertBackendPodListed(ctx, t, gwAddr, "internal.mcp.local", "/mcp", server.Namespace, cfg.Client().Resources(),
+				map[string]string{mcpcontroller.LabelKeyMCPServer: server.Name})
 			return ctx
 		}).
 		Teardown(func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
