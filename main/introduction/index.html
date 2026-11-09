@@ -9,7 +9,7 @@
 <link href=".." rel="prev"/>
 <link href="../guides/" rel="next"/>
 <link href="../images/favicon-64.png" rel="icon"/>
-<meta content="mkdocs-1.6.1, mkdocs-material-9.8.0" name="generator"/>
+<meta content="mkdocs-1.6.1, mkdocs-material-9.8.1" name="generator"/>
 <title>Introduction - MCP Lifecycle Operator</title>
 <link href="../assets/stylesheets/main.57a0d79d.min.css" rel="stylesheet"/>
 <link href="../assets/stylesheets/palette.fb2fffe2.min.css" rel="stylesheet"/>
@@ -382,6 +382,18 @@
 </a>
 </li>
 <li class="md-nav__item">
+<a class="md-nav__link" href="../guides/quickstart/">
+<span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
 <a class="md-nav__link" href="../guides/gateway/">
 <span class="md-ellipsis">
     
@@ -406,11 +418,11 @@
 </a>
 </li>
 <li class="md-nav__item">
-<a class="md-nav__link" href="../guides/quickstart/">
+<a class="md-nav__link" href="../guides/byo/">
 <span class="md-ellipsis">
     
   
-    Quickstart Guide
+    Use an Existing Workload or Service
   
 
     
@@ -728,6 +740,7 @@
 <h2 id="api-resources">API Resources<a class="headerlink" href="#api-resources" title="Permanent link">¶</a></h2>
 <h3 id="mcpserver">MCPServer<a class="headerlink" href="#mcpserver" title="Permanent link">¶</a></h3>
 <p>The core resource provided by this operator is <code>MCPServer</code>. It represents a deployed MCP server instance with the following key capabilities:</p>
+<p>In the default <strong>managed mode</strong> described below, the operator creates and maintains the Deployment, Service, and NetworkPolicy. If another tool or team manages a workload or Service, you can <a href="../guides/byo/">reference those existing resources</a>.</p>
 <h4 id="source-configuration">Source Configuration<a class="headerlink" href="#source-configuration" title="Permanent link">¶</a></h4>
 <p>Define where your MCP server container image comes from:</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a href="#__codelineno-0-1" id="__codelineno-0-1" name="__codelineno-0-1"></a><span class="nt">spec</span><span class="p">:</span>
@@ -750,7 +763,7 @@
 <p>Configure the server's networking, arguments, environment variables, and storage mounts:</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-2-1"><a href="#__codelineno-2-1" id="__codelineno-2-1" name="__codelineno-2-1"></a><span class="nt">spec</span><span class="p">:</span>
 </span><span id="__span-2-2"><a href="#__codelineno-2-2" id="__codelineno-2-2" name="__codelineno-2-2"></a><span class="w">  </span><span class="nt">config</span><span class="p">:</span>
-</span><span id="__span-2-3"><a href="#__codelineno-2-3" id="__codelineno-2-3" name="__codelineno-2-3"></a><span class="w">    </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8080</span><span class="w">              </span><span class="c1"># Server port (required)</span>
+</span><span id="__span-2-3"><a href="#__codelineno-2-3" id="__codelineno-2-3" name="__codelineno-2-3"></a><span class="w">    </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8080</span><span class="w">              </span><span class="c1"># Container port (required in managed mode)</span>
 </span><span id="__span-2-4"><a href="#__codelineno-2-4" id="__codelineno-2-4" name="__codelineno-2-4"></a><span class="w">    </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/mcp</span><span class="w">              </span><span class="c1"># HTTP path (default: /mcp)</span>
 </span><span id="__span-2-5"><a href="#__codelineno-2-5" id="__codelineno-2-5" name="__codelineno-2-5"></a><span class="w">    </span><span class="nt">arguments</span><span class="p">:</span><span class="w">              </span><span class="c1"># Command-line arguments</span>
 </span><span id="__span-2-6"><a href="#__codelineno-2-6" id="__codelineno-2-6" name="__codelineno-2-6"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">--config</span>
@@ -816,6 +829,7 @@
 </span><span id="__span-5-3"><a href="#__codelineno-5-3" id="__codelineno-5-3" name="__codelineno-5-3"></a><span class="w">    </span><span class="nt">stateless</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 </span></code></pre></div>
 <p>The <code>stateless</code> field indicates whether the MCP server maintains session state. When <code>true</code>, the generated Service uses <code>SessionAffinity: None</code>, allowing requests to be freely load-balanced across replicas. When <code>false</code> or unset (the default), the Service uses <code>SessionAffinity: ClientIP</code> so a given client's requests are routed to the same pod.</p>
+<p>When using <code>serviceRef</code>, configure session affinity on that Service instead; <code>mcp.stateless</code> must be omitted.</p>
 <h2 id="status-and-discovery">Status and Discovery<a class="headerlink" href="#status-and-discovery" title="Permanent link">¶</a></h2>
 <p>The operator automatically manages the server lifecycle and provides status information:</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-6-1"><a href="#__codelineno-6-1" id="__codelineno-6-1" name="__codelineno-6-1"></a><span class="nt">status</span><span class="p">:</span>
@@ -835,8 +849,9 @@
 </span><span id="__span-6-15"><a href="#__codelineno-6-15" id="__codelineno-6-15" name="__codelineno-6-15"></a><span class="w">      </span><span class="nt">reason</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Verified</span>
 </span></code></pre></div>
 <p><code>Accepted</code> indicates valid configuration, <code>Available</code> indicates a ready workload, and <code>Verified</code> indicates that the MCP endpoint passed verification. Inspect each condition's reason and message for details.</p>
-<p>The <code>address.url</code> field provides the cluster-internal URL that other workloads can use to connect to the MCP server.</p>
+<p>The <code>address.url</code> field provides the verified Service URL, or the external gateway URL when gateway integration supplies one. For referenced workloads, status uses <code>workloadName</code> and <code>workloadSummary</code> instead of <code>deploymentName</code>; see <a href="../guides/byo/#availability-and-discovery">availability and discovery</a>.</p>
 <h2 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">¶</a></h2>
+<p>The following diagram shows the default managed mode:</p>
 <pre class="mermaid"><code>graph TB
     User[User] --&gt;|kubectl apply| MCPServer[MCPServer CR]
     MCPServer --&gt;|Reconciles| Operator[MCP Lifecycle Operator]
@@ -850,7 +865,7 @@
     Binding --&gt;|Watched by| Provider[Integration Controller]
     Provider --&gt;|Creates| GWResources[Gateway Resources]
     Operator --&gt;|Updates| Status[Status with Address]</code></pre>
-<p>The operator watches for <code>MCPServer</code> resources and automatically:</p>
+<p>In managed mode, the operator watches for <code>MCPServer</code> resources and automatically:</p>
 <ol>
 <li>Creates a Deployment to run the MCP server containers</li>
 <li>Creates a Service for network access</li>
@@ -860,12 +875,13 @@
 <li>Reports status and connection information</li>
 <li>Cleans up resources on deletion</li>
 </ol>
+<p>With <code>workloadRef</code>, the operator observes the existing workload instead of creating a Deployment or NetworkPolicy. With <code>serviceRef</code>, it uses the existing Service instead of managing one. Referenced resources remain under their existing management and are not deleted with the MCPServer.</p>
 <h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">¶</a></h2>
 <ul>
 <li><strong>Get Started</strong>: Follow the <a href="../guides/quickstart/">Quickstart Guide</a></li>
 <li><strong>Examples</strong>: Check out the <a href="https://github.com/kubernetes-sigs/mcp-lifecycle-operator/tree/main/examples">examples directory</a></li>
 <li><strong>API Reference</strong>: See the <a href="../reference/">API documentation</a> for all available fields</li>
-<li><strong>Complete Example</strong>: See the <a href="https://github.com/kubernetes-sigs/mcp-lifecycle-operator/blob/main/config/samples/mcp_v1beta1_mcpserver_complete.yaml">complete MCPServer sample</a> for a YAML with every field</li>
+<li><strong>Managed Example</strong>: See the <a href="https://github.com/kubernetes-sigs/mcp-lifecycle-operator/blob/main/config/samples/mcp_v1beta1_mcpserver_complete.yaml">complete managed MCPServer sample</a></li>
 <li><strong>Contributing</strong>: Read the <a href="../contributing/">Contributing Guide</a> to get involved</li>
 <li><strong>Community</strong>: Join <a href="https://github.com/kubernetes/community/blob/main/sig-apps/README.md">SIG Apps</a> meetings and discussions</li>
 </ul>
@@ -905,6 +921,6 @@
 <div class="md-dialog__inner md-typeset"></div>
 </div>
 <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["search.highlight", "navigation.tabs", "navigation.top", "navigation.expand", "content.code.copy", "content.action.edit"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
-<script src="../assets/javascripts/bundle.c21346df.min.js"></script>
+<script src="../assets/javascripts/bundle.a5f9d56c.min.js"></script>
 </body>
 </html>

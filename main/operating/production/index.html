@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="../../images/favicon-64.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
     
     
       
@@ -497,6 +497,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../guides/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../guides/gateway/" class="md-nav__link">
         
   
@@ -553,14 +581,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../guides/quickstart/" class="md-nav__link">
+      <a href="../../guides/byo/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Quickstart Guide
+    Use an Existing Workload or Service
   
 
     
@@ -859,6 +887,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="TLS &amp; transport security">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#custom-cluster-dns-domains" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Custom cluster DNS domains
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -911,6 +956,17 @@
   
     <nav class="md-nav" aria-label="Availability &amp; operations">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mcp-server-rollout-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MCP server rollout strategy
+      
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#performance-testing" class="md-nav__link">
@@ -1194,6 +1250,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="TLS &amp; transport security">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#custom-cluster-dns-domains" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Custom cluster DNS domains
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1246,6 +1319,17 @@
   
     <nav class="md-nav" aria-label="Availability &amp; operations">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mcp-server-rollout-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MCP server rollout strategy
+      
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#performance-testing" class="md-nav__link">
@@ -1357,6 +1441,7 @@
 </table>
 <h2 id="network-isolation">Network isolation<a class="headerlink" href="#network-isolation" title="Permanent link">&para;</a></h2>
 <p>The operator creates a <code>NetworkPolicy</code> for every managed MCP server pod. Out of the box that policy allows <strong>any pod in the cluster</strong> to reach the server port and lets the server pod egress <strong>anywhere</strong>. For production, and to align with the NSA CSI MCP Security guidance on designing for boundaries, restrict both directions through <code>spec.network</code>.</p>
+<p>For an <a href="../../guides/byo/">existing workload referenced through <code>workloadRef</code></a>, the operator does not create a NetworkPolicy and <code>spec.network</code> is rejected. Manage isolation separately and permit the operator's endpoint verification traffic, along with required client and gateway traffic.</p>
 <div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mcp.x-k8s.io/v1beta1</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">MCPServer</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nt">metadata</span><span class="p">:</span>
@@ -1428,7 +1513,7 @@
 </div>
 <div class="admonition note">
 <p class="admonition-title">Observing the effective posture</p>
-<p>The open default is not silent. When the operator starts with the default <code>--network-policy-default-posture=open</code>, it logs a <code>WARNING:</code> advisory noting that servers without <code>ingressFrom</code> are reachable from any namespace and pointing at the restricted alternative. Independently of the flag, every MCPServer reports its applied posture in the <code>NetworkPolicyRestricted</code> status condition: <code>status: "True"</code> (reason <code>Restricted</code>) once both ingress sources and egress are constrained, and <code>status: "False"</code> (reason <code>Unrestricted</code>, <code>IngressUnrestricted</code>, or <code>EgressUnrestricted</code>) while either direction is still open. Watch that condition (<code>kubectl get mcpserver -o jsonpath='{.status.conditions}'</code>) to find servers still running with open ingress. The condition is informational and never gates readiness.</p>
+<p>The open default is not silent. When the operator starts with the default <code>--network-policy-default-posture=open</code>, it logs a <code>WARNING:</code> advisory noting that servers without <code>ingressFrom</code> are reachable from any namespace and pointing at the restricted alternative. Independently of the flag, every MCPServer with an operator-managed workload reports its applied posture in the <code>NetworkPolicyRestricted</code> status condition: <code>status: "True"</code> (reason <code>Restricted</code>) once both ingress sources and egress are constrained, and <code>status: "False"</code> (reason <code>Unrestricted</code>, <code>IngressUnrestricted</code>, or <code>EgressUnrestricted</code>) while either direction is still open. Watch that condition (<code>kubectl get mcpserver -o jsonpath='{.status.conditions}'</code>) to find servers still running with open ingress. The condition is informational and never gates readiness.</p>
 </div>
 <p>Peers use the standard Kubernetes <code>NetworkPolicyPeer</code> shape (<code>podSelector</code>, <code>namespaceSelector</code>, <code>ipBlock</code>); <code>ipBlock</code> cannot be combined with the selector fields. These constraints are checked during <strong>reconciliation</strong>, not by an admission webhook: an MCPServer with an invalid CIDR is still admitted by the API server and then reports a <code>ValidationError</code> status condition, so validate config before applying rather than relying on <code>kubectl apply</code> to reject it.</p>
 <h2 id="gateway-integration">Gateway integration<a class="headerlink" href="#gateway-integration" title="Permanent link">&para;</a></h2>
@@ -1444,6 +1529,12 @@
 </div>
 <h2 id="tls-transport-security">TLS &amp; transport security<a class="headerlink" href="#tls-transport-security" title="Permanent link">&para;</a></h2>
 <p>The controller manager serves its webhook and metrics endpoints over TLS, and opens an outbound TLS connection to each managed server to verify the MCP handshake. Both surfaces read the same profile from <code>TLS_MIN_VERSION</code>, <code>TLS_CIPHER_SUITES</code>, and <code>TLS_GROUPS</code>.</p>
+<h3 id="custom-cluster-dns-domains">Custom cluster DNS domains<a class="headerlink" href="#custom-cluster-dns-domains" title="Permanent link">&para;</a></h3>
+<p>The operator uses <code>cluster.local</code> by default when constructing the in-cluster MCP Service URL. Clusters that use a different DNS domain must pass the domain to the manager, for example:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>--cluster-domain=cozy.local
+</span></code></pre></div>
+<p>The value must be a DNS subdomain, without a URL scheme, credentials, port, path, query, or fragment. The manager rejects invalid values at startup before connecting to Kubernetes. Surrounding whitespace, letter case, and a single trailing DNS root dot are normalized; an empty value uses <code>cluster.local</code>.</p>
+<p>The same value is used for handshake verification and for the published <code>status.address.url</code> when no gateway address overrides it. If a registered gateway supplies an address, that gateway address is published instead. Configure it on the manager Deployment before creating MCPServers on a custom-domain cluster.</p>
 <p>In production, pin these to your organization's crypto policy (or let a platform TLS profile such as an OpenShift <code>TLSSecurityProfile</code> supply them) instead of relying on Go defaults. The outbound client path enforces a TLS 1.2 floor that a permissive profile cannot lower.</p>
 <p>See the <strong><a href="../tls/">TLS configuration page</a></strong> for the full variable reference, TLS 1.3 named groups, and post-quantum (<code>X25519MLKEM768</code>) availability.</p>
 <h2 id="metrics-monitoring-security">Metrics &amp; monitoring security<a class="headerlink" href="#metrics-monitoring-security" title="Permanent link">&para;</a></h2>
@@ -1455,15 +1546,15 @@
 <p>See the <strong><a href="../metrics/">Metrics page</a></strong> for the full list of exposed metrics and their labels.</p>
 <h2 id="operator-hardening">Operator hardening<a class="headerlink" href="#operator-hardening" title="Permanent link">&para;</a></h2>
 <p>The shipped controller Deployment already runs the manager container with a locked-down container-level <code>securityContext</code> (under <code>spec.template.spec.containers[]</code>) - keep it:</p>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">securityContext</span><span class="p">:</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">allowPrivilegeEscalation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="nt">readOnlyRootFilesystem</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="nt">runAsNonRoot</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span><span class="nt">capabilities</span><span class="p">:</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">    </span><span class="nt">drop</span><span class="p">:</span>
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ALL</span>
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">  </span><span class="nt">seccompProfile</span><span class="p">:</span>
-</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RuntimeDefault</span>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">securityContext</span><span class="p">:</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">allowPrivilegeEscalation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span><span class="nt">readOnlyRootFilesystem</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span><span class="nt">runAsNonRoot</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">  </span><span class="nt">capabilities</span><span class="p">:</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">    </span><span class="nt">drop</span><span class="p">:</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ALL</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">  </span><span class="nt">seccompProfile</span><span class="p">:</span>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RuntimeDefault</span>
 </span></code></pre></div>
 <p>Additional hardening for production:</p>
 <ul>
@@ -1483,6 +1574,29 @@
 <li><strong>Replicas &amp; resources</strong> - the operator ships with a single replica and modest requests/limits (<code>cpu: 10m</code> / <code>memory: 128Mi</code> requests, <code>cpu: 500m</code> / <code>memory: 512Mi</code> limits). Size these for the number of managed servers in your cluster and load-test before committing to limits; see <a href="#performance-testing">Performance testing</a>.</li>
 <li><strong>Storage-version migrations</strong> - when upgrading across API storage versions, drive the migration deliberately rather than relying on lazy conversion. See the <strong><a href="../storage-version-migration/">Storage Version Migration page</a></strong>.</li>
 </ul>
+<h3 id="mcp-server-rollout-strategy">MCP server rollout strategy<a class="headerlink" href="#mcp-server-rollout-strategy" title="Permanent link">&para;</a></h3>
+<p>For operator-managed Deployments, use <code>spec.runtime.strategy</code> to configure
+<code>RollingUpdate</code> or <code>Recreate</code>. For example:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">spec</span><span class="p">:</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">runtime</span><span class="p">:</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="nt">strategy</span><span class="p">:</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">      </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RollingUpdate</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">      </span><span class="nt">rollingUpdate</span><span class="p">:</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">        </span><span class="nt">maxSurge</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">        </span><span class="nt">maxUnavailable</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
+</span></code></pre></div>
+<p><code>maxSurge</code> and <code>maxUnavailable</code> accept non-negative integers or percentage strings
+such as <code>"25%"</code>. The percentage for <code>maxUnavailable</code> cannot exceed <code>100%</code>, and
+the two values cannot both be zero. Unspecified rolling-update values default
+to <code>25%</code>; an unspecified type defaults to <code>RollingUpdate</code>.</p>
+<p>To terminate the old pods before creating replacements during a rollout, set
+<code>type: Recreate</code> and omit <code>rollingUpdate</code>. Removing <code>strategy</code> restores
+<code>RollingUpdate</code> with both values at <code>25%</code>. The operator reconciles strategy
+changes on the managed Deployment, including correcting manual changes.</p>
+<p>When <code>spec.workloadRef</code> is set, configure the rollout strategy directly on the
+referenced workload. Combining <code>workloadRef</code> with <code>runtime.strategy</code> is rejected.</p>
+<p>These settings control Kubernetes rollout behavior. They do not implement
+MCP session draining or guarantee uninterrupted sessions.</p>
 <h3 id="performance-testing">Performance testing<a class="headerlink" href="#performance-testing" title="Permanent link">&para;</a></h3>
 <p>Sizing and scaling recommendations should be backed by load and stress testing (operator under many managed servers, CPU/memory under load). This is tracked upstream and is not yet part of this guide.</p>
 <h2 id="further-reading">Further reading<a class="headerlink" href="#further-reading" title="Permanent link">&para;</a></h2>
@@ -1576,7 +1690,7 @@
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["search.highlight", "navigation.tabs", "navigation.top", "navigation.expand", "content.code.copy", "content.action.edit"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.c21346df.min.js"></script>
+      <script src="../../assets/javascripts/bundle.a5f9d56c.min.js"></script>
       
     
   </body>

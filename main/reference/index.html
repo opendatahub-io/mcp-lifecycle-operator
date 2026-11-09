@@ -11,7 +11,7 @@
         <link rel="canonical" href="https://mcp-lifecycle-operator.sigs.k8s.io/main/reference/">
       
       
-        <link rel="prev" href="../guides/quickstart/">
+        <link rel="prev" href="../guides/byo/">
       
       
         <link rel="next" href="v1alpha1/">
@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="../images/favicon-64.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
     
     
       
@@ -497,6 +497,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../guides/quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../guides/gateway/" class="md-nav__link">
         
   
@@ -553,14 +581,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../guides/quickstart/" class="md-nav__link">
+      <a href="../guides/byo/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Quickstart Guide
+    Use an Existing Workload or Service
   
 
     
@@ -1903,9 +1931,11 @@ it maintains session state. These properties are distinct from container configu
 </table>
 <h4 id="mcpserver">MCPServer<a class="headerlink" href="#mcpserver" title="Permanent link">&para;</a></h4>
 <p>MCPServer runs a Model Context Protocol (MCP) server in Kubernetes.</p>
-<p>MCPServer creates and manages a Deployment, Service, and NetworkPolicy to run an MCP server from a
-container image. The MCP server exposes tools, resources, and prompts that AI applications
-can use via the Model Context Protocol.</p>
+<p>By default, MCPServer creates and manages a Deployment, Service, and NetworkPolicy
+to run an MCP server from a container image. WorkloadRef and ServiceRef can
+instead reference existing resources managed outside the operator. The MCP
+server exposes tools, resources, and prompts that AI applications can use via
+the Model Context Protocol.</p>
 <p>Example:</p>
 <div class="language-text highlight"><pre><span></span><code>apiVersion: mcp.x-k8s.io/v1beta1
 kind: MCPServer
@@ -1919,11 +1949,12 @@ spec:
   config:
     port: 8080
 </code></pre></div>
-<p>The controller manages Deployment, Service, and NetworkPolicy resources with the same name as the MCPServer,
+<p>In managed mode, the controller manages Deployment, Service, and NetworkPolicy resources with the same name as the MCPServer,
 using ownerReferences to establish ownership. The controller will reject updates to resources
 owned by other controllers or resources with no controller owner (to prevent silent overwrites
 of manually-created resources), but will adopt orphaned resources from a deleted MCPServer
-with the same name to enable seamless recreation.</p>
+with the same name to enable seamless recreation. Referenced workloads and
+Services remain under their existing management and are not adopted or deleted.</p>
 <table>
 <thead>
 <tr>
@@ -1982,7 +2013,7 @@ with the same name to enable seamless recreation.</p>
 <tbody>
 <tr>
 <td><code>url</code> <em>string</em></td>
-<td>URL is the address of the MCP server.<br />When no gateway is configured, this is the cluster-internal service address<br />(e.g. <scheme>://<servicename>.<namespace>.svc.cluster.local:<port>/<path>).<br />The scheme is "https" when TLS is enabled, "http" otherwise.<br />When a gateway provider is active, this is the external gateway address.</td>
+<td>URL is the address of the MCP server.<br />When no gateway is configured, this is the cluster-internal service address<br />(e.g. <scheme>://<servicename>.<namespace>.svc.<cluster-domain>:<port>/<path>).<br />The scheme is "https" when TLS is enabled, "http" otherwise.<br />When a gateway provider is active, this is the external gateway address.</td>
 <td></td>
 <td>Optional: {} <br /></td>
 </tr>
@@ -2221,6 +2252,12 @@ MCP server during the protocol handshake (initialize or server/discover).</p>
 <td>Optional: {} <br /></td>
 </tr>
 <tr>
+<td><code>verifiedEndpointURL</code> <em>string</em></td>
+<td>VerifiedEndpointURL is the internal Service URL for which Verified=True<br />was established. Unlike Address, it is not replaced by a gateway URL.<br />A changed or missing value requires endpoint verification again.</td>
+<td></td>
+<td>Optional: {} <br /></td>
+</tr>
+<tr>
 <td><code>serverInfo</code> <em><a href="#mcpserverinfo">MCPServerInfo</a></em></td>
 <td>ServerInfo contains identity and capability information reported by the<br />MCP server during the protocol handshake (initialize or server/discover).<br />This field is populated only after a successful handshake.</td>
 <td></td>
@@ -2335,6 +2372,12 @@ See individual field documentation for specific defaults.</p>
 </tr>
 </thead>
 <tbody>
+<tr>
+<td><code>strategy</code> <em><a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#deploymentstrategy-v1-apps">DeploymentStrategy</a></em></td>
+<td>Strategy controls rollout of the operator-managed Deployment.<br />When omitted or removed, defaults to RollingUpdate with maxSurge and<br />maxUnavailable both set to 25%. This does not provide session-aware draining.<br />With workloadRef, configure the strategy on the referenced workload instead.</td>
+<td></td>
+<td>Optional: {} <br /></td>
+</tr>
 <tr>
 <td><code>replicas</code> <em>integer</em></td>
 <td>Replicas is the number of MCP server pod replicas to run.<br />Defaults to 1 if not specified.<br />Set to 0 to scale down the deployment.<br />This field is a pointer (*int32) to distinguish between:<br />  - nil (not specified) -&gt; defaults to 1 replica<br />  - ptr.To(0) (explicit 0) -&gt; scale-to-zero<br />This follows the same pattern as Deployment.Spec.Replicas in k8s.io/api/apps/v1.</td>
@@ -2847,7 +2890,7 @@ operator-to-MCP-server communication.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["search.highlight", "navigation.tabs", "navigation.top", "navigation.expand", "content.code.copy", "content.action.edit"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
     
     
-      <script src="../assets/javascripts/bundle.c21346df.min.js"></script>
+      <script src="../assets/javascripts/bundle.a5f9d56c.min.js"></script>
       
     
   </body>
