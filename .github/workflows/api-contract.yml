@@ -1,0 +1,42 @@
+name: API contract
+
+# Downstream-only onboarding to the shared RHOAI API contract compatibility checks
+# (red-hat-data-services/api-contract-tests). These are pull-request checks: each CRD
+# change is compared against an immutable baseline so a break shows up early.
+#
+# Carry this file across upstream (kubernetes-sigs) syncs as a downstream-only file.
+#
+# Reusable workflows are pinned to @latest (currently v2.1.0); see
+# https://github.com/red-hat-data-services/api-contract-tests/blob/main/docs/releasing.md
+#
+# Baseline 54191cfbfd1277457d6a85aadafa5d4e8b362b13 is the merge base of
+# opendatahub-io/mcp-lifecycle-operator main and red-hat-data-services/mcp-lifecycle-operator
+# rhoai-3.6 (the commit the RHOAI 3.6 release was based on), from
+# release_baseline.py lookup --release 3.6 on 2026-11-13. Moving it forward needs an
+# owner's approval (the root OWNERS already gates every file in this repo).
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  crd-contract:
+    uses: red-hat-data-services/api-contract-tests/.github/workflows/provider-crd-check.yml@latest
+    with:
+      crd-glob: config/crd/bases/*.yaml
+      baseline-refs: 54191cfbfd1277457d6a85aadafa5d4e8b362b13
+      mode: enforce
+
+  api-contract-coverage:
+    uses: red-hat-data-services/api-contract-tests/.github/workflows/provider-coverage-check.yml@latest
+    with:
+      # CRD-only mode: this repository ships no OpenAPI specs, so there is no
+      # .rhoai/contracts.yaml descriptor.
+      crd-globs: config/crd/bases/*.yaml
+      # kuadrant provider test fixtures, not provider contracts.
+      crd-exclude-globs: internal/controller/providers/kuadrant/testdata/*.yaml
+      yq-version: "4.45.1"
+      mode: enforce
