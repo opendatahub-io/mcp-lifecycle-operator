@@ -35,7 +35,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	mcpv1beta1 "github.com/kubernetes-sigs/mcp-lifecycle-operator/api/v1beta1"
+	mcpv1 "github.com/kubernetes-sigs/mcp-lifecycle-operator/api/v1"
 )
 
 var _ = Describe("MCPServer Controller - Error Recovery", func() {
@@ -55,7 +55,7 @@ var _ = Describe("MCPServer Controller - Error Recovery", func() {
 			resource.Spec.Config.EnvFrom = []corev1.EnvFromSource{
 				{
 					ConfigMapRef: &corev1.ConfigMapEnvSource{
-						LocalObjectReference: corev1.LocalObjectReference{Name: configMapName},
+						Name: configMapName,
 					},
 				},
 			}
@@ -63,7 +63,7 @@ var _ = Describe("MCPServer Controller - Error Recovery", func() {
 		})
 
 		AfterEach(func() {
-			resource := &mcpv1beta1.MCPServer{}
+			resource := &mcpv1.MCPServer{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			if err == nil {
 				Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
@@ -89,7 +89,7 @@ var _ = Describe("MCPServer Controller - Error Recovery", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Verifying status is Failed")
-			mcpServer := &mcpv1beta1.MCPServer{}
+			mcpServer := &mcpv1.MCPServer{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 			acceptedCondition := meta.FindStatusCondition(mcpServer.Status.Conditions, "Accepted")
 			Expect(acceptedCondition).NotTo(BeNil())
@@ -108,8 +108,8 @@ var _ = Describe("MCPServer Controller - Error Recovery", func() {
 
 			By("Creating the missing ConfigMap")
 			configMap := &corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{Name: configMapName, Namespace: "default"},
-				Data:       map[string]string{"key": "value"},
+				Name: configMapName, Namespace: "default",
+				Data: map[string]string{"key": "value"},
 			}
 			Expect(k8sClient.Create(ctx, configMap)).To(Succeed())
 
@@ -148,7 +148,7 @@ var _ = Describe("MCPServer Controller - Error Recovery", func() {
 			resource.Spec.Config.EnvFrom = []corev1.EnvFromSource{
 				{
 					SecretRef: &corev1.SecretEnvSource{
-						LocalObjectReference: corev1.LocalObjectReference{Name: secretName},
+						Name: secretName,
 					},
 				},
 			}
@@ -156,7 +156,7 @@ var _ = Describe("MCPServer Controller - Error Recovery", func() {
 		})
 
 		AfterEach(func() {
-			resource := &mcpv1beta1.MCPServer{}
+			resource := &mcpv1.MCPServer{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			if err == nil {
 				Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
@@ -182,7 +182,7 @@ var _ = Describe("MCPServer Controller - Error Recovery", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Verifying status is Failed")
-			mcpServer := &mcpv1beta1.MCPServer{}
+			mcpServer := &mcpv1.MCPServer{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 			acceptedCondition := meta.FindStatusCondition(mcpServer.Status.Conditions, "Accepted")
 			Expect(acceptedCondition).NotTo(BeNil())
@@ -201,8 +201,8 @@ var _ = Describe("MCPServer Controller - Error Recovery", func() {
 
 			By("Creating the missing Secret")
 			secret := &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{Name: secretName, Namespace: "default"},
-				Data:       map[string][]byte{"key": []byte("value")},
+				Name: secretName, Namespace: "default",
+				Data: map[string][]byte{"key": []byte("value")},
 			}
 			Expect(k8sClient.Create(ctx, secret)).To(Succeed())
 
@@ -238,13 +238,13 @@ var _ = Describe("MCPServer Controller - Error Recovery", func() {
 
 		BeforeEach(func() {
 			resource := newTestMCPServer(resourceName)
-			resource.Spec.Config.Storage = []mcpv1beta1.StorageMount{
+			resource.Spec.Config.Storage = []mcpv1.StorageMount{
 				{
 					Path: "/etc/config",
-					Source: mcpv1beta1.StorageSource{
-						Type: mcpv1beta1.StorageTypeConfigMap,
+					Source: mcpv1.StorageSource{
+						Type: mcpv1.StorageTypeConfigMap,
 						ConfigMap: &corev1.ConfigMapVolumeSource{
-							LocalObjectReference: corev1.LocalObjectReference{Name: configMapName},
+							Name: configMapName,
 						},
 					},
 				},
@@ -253,7 +253,7 @@ var _ = Describe("MCPServer Controller - Error Recovery", func() {
 		})
 
 		AfterEach(func() {
-			resource := &mcpv1beta1.MCPServer{}
+			resource := &mcpv1.MCPServer{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			if err == nil {
 				Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
@@ -279,7 +279,7 @@ var _ = Describe("MCPServer Controller - Error Recovery", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Verifying status is Failed")
-			mcpServer := &mcpv1beta1.MCPServer{}
+			mcpServer := &mcpv1.MCPServer{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 			acceptedCondition := meta.FindStatusCondition(mcpServer.Status.Conditions, "Accepted")
 			Expect(acceptedCondition).NotTo(BeNil())
@@ -293,8 +293,8 @@ var _ = Describe("MCPServer Controller - Error Recovery", func() {
 
 			By("Creating the missing ConfigMap")
 			configMap := &corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{Name: configMapName, Namespace: "default"},
-				Data:       map[string]string{"config.yaml": "data: value"},
+				Name: configMapName, Namespace: "default",
+				Data: map[string]string{"config.yaml": "data: value"},
 			}
 			Expect(k8sClient.Create(ctx, configMap)).To(Succeed())
 
@@ -336,8 +336,8 @@ var _ = Describe("MCPServer Controller - Error Recovery", func() {
 					Name: "RECOVERY_VAR",
 					ValueFrom: &corev1.EnvVarSource{
 						ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{Name: configMapName},
-							Key:                  "some-key",
+							Name: configMapName,
+							Key:  "some-key",
 						},
 					},
 				},
@@ -346,7 +346,7 @@ var _ = Describe("MCPServer Controller - Error Recovery", func() {
 		})
 
 		AfterEach(func() {
-			resource := &mcpv1beta1.MCPServer{}
+			resource := &mcpv1.MCPServer{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			if err == nil {
 				Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
@@ -372,7 +372,7 @@ var _ = Describe("MCPServer Controller - Error Recovery", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Verifying status is Failed")
-			mcpServer := &mcpv1beta1.MCPServer{}
+			mcpServer := &mcpv1.MCPServer{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 			acceptedCondition := meta.FindStatusCondition(mcpServer.Status.Conditions, "Accepted")
 			Expect(acceptedCondition).NotTo(BeNil())
@@ -391,8 +391,8 @@ var _ = Describe("MCPServer Controller - Error Recovery", func() {
 
 			By("Creating the missing ConfigMap")
 			configMap := &corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{Name: configMapName, Namespace: "default"},
-				Data:       map[string]string{"some-key": "value"},
+				Name: configMapName, Namespace: "default",
+				Data: map[string]string{"some-key": "value"},
 			}
 			Expect(k8sClient.Create(ctx, configMap)).To(Succeed())
 
@@ -433,8 +433,8 @@ var _ = Describe("MCPServer Controller - Error Recovery", func() {
 					Name: "SECRET_RECOVERY_VAR",
 					ValueFrom: &corev1.EnvVarSource{
 						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{Name: secretName},
-							Key:                  "some-key",
+							Name: secretName,
+							Key:  "some-key",
 						},
 					},
 				},
@@ -443,7 +443,7 @@ var _ = Describe("MCPServer Controller - Error Recovery", func() {
 		})
 
 		AfterEach(func() {
-			resource := &mcpv1beta1.MCPServer{}
+			resource := &mcpv1.MCPServer{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			if err == nil {
 				Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
@@ -469,7 +469,7 @@ var _ = Describe("MCPServer Controller - Error Recovery", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Verifying status is Failed")
-			mcpServer := &mcpv1beta1.MCPServer{}
+			mcpServer := &mcpv1.MCPServer{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 			acceptedCondition := meta.FindStatusCondition(mcpServer.Status.Conditions, "Accepted")
 			Expect(acceptedCondition).NotTo(BeNil())
@@ -488,8 +488,8 @@ var _ = Describe("MCPServer Controller - Error Recovery", func() {
 
 			By("Creating the missing Secret")
 			secret := &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{Name: secretName, Namespace: "default"},
-				Data:       map[string][]byte{"some-key": []byte("value")},
+				Name: secretName, Namespace: "default",
+				Data: map[string][]byte{"some-key": []byte("value")},
 			}
 			Expect(k8sClient.Create(ctx, secret)).To(Succeed())
 
@@ -531,7 +531,7 @@ var _ = Describe("MCPServer Controller - Optimistic Locking Conflicts", func() {
 	})
 
 	AfterEach(func() {
-		resource := &mcpv1beta1.MCPServer{}
+		resource := &mcpv1.MCPServer{}
 		err := k8sClient.Get(ctx, typeNamespacedName, resource)
 		if err == nil {
 			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
@@ -561,7 +561,7 @@ var _ = Describe("MCPServer Controller - Optimistic Locking Conflicts", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Updating MCPServer spec to trigger a deployment update")
-		mcpServer := &mcpv1beta1.MCPServer{}
+		mcpServer := &mcpv1.MCPServer{}
 		Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 		mcpServer.Spec.Config.Env = []corev1.EnvVar{{Name: "CONFLICT_VAR", Value: "value"}}
 		Expect(k8sClient.Update(ctx, mcpServer)).To(Succeed())
@@ -614,7 +614,7 @@ var _ = Describe("MCPServer Controller - Optimistic Locking Conflicts", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Updating MCPServer spec to trigger a deployment update")
-		mcpServer := &mcpv1beta1.MCPServer{}
+		mcpServer := &mcpv1.MCPServer{}
 		Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 		mcpServer.Spec.Config.Env = []corev1.EnvVar{{Name: "RETRY_VAR", Value: "value"}}
 		Expect(k8sClient.Update(ctx, mcpServer)).To(Succeed())
@@ -681,7 +681,7 @@ var _ = Describe("MCPServer Controller - Optimistic Locking Conflicts", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Updating MCPServer port to trigger a service update")
-		mcpServer := &mcpv1beta1.MCPServer{}
+		mcpServer := &mcpv1.MCPServer{}
 		Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 		mcpServer.Spec.Config.Port = 9090
 		Expect(k8sClient.Update(ctx, mcpServer)).To(Succeed())
@@ -734,7 +734,7 @@ var _ = Describe("MCPServer Controller - Optimistic Locking Conflicts", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Capturing the baseline Available condition after a successful reconcile")
-		mcpServer := &mcpv1beta1.MCPServer{}
+		mcpServer := &mcpv1.MCPServer{}
 		Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 		baseline := meta.FindStatusCondition(mcpServer.Status.Conditions, ConditionTypeAvailable)
 		Expect(baseline).NotTo(BeNil())
@@ -801,7 +801,7 @@ var _ = Describe("MCPServer Controller - Optimistic Locking Conflicts", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Capturing the baseline Available condition after a successful reconcile")
-		mcpServer := &mcpv1beta1.MCPServer{}
+		mcpServer := &mcpv1.MCPServer{}
 		Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 		baseline := meta.FindStatusCondition(mcpServer.Status.Conditions, ConditionTypeAvailable)
 		Expect(baseline).NotTo(BeNil())
@@ -855,7 +855,7 @@ var _ = Describe("MCPServer Controller - Optimistic Locking Conflicts", func() {
 var _ = Describe("BYO Service failure status", func() {
 	It("should preserve the referenced Service name through validation, resource failure and recovery", func() {
 		ctx := context.Background()
-		server := newTestBYOMCPServer("byo-service-error-status", nil, &mcpv1beta1.ServiceReference{Name: "external-error-status"})
+		server := newTestBYOMCPServer("byo-service-error-status", nil, &mcpv1.ServiceReference{Name: "external-error-status"})
 		Expect(k8sClient.Create(ctx, server)).To(Succeed())
 		DeferCleanup(func() { Expect(k8sClient.Delete(ctx, server)).To(Succeed()) })
 		req := reconcile.Request{NamespacedName: client.ObjectKeyFromObject(server)}
@@ -869,13 +869,13 @@ var _ = Describe("BYO Service failure status", func() {
 		Expect(server.Status.ServiceName).To(Equal("external-error-status"))
 
 		svc := &corev1.Service{
-			ObjectMeta: metav1.ObjectMeta{Name: "external-error-status", Namespace: "default"},
-			Spec:       corev1.ServiceSpec{Ports: []corev1.ServicePort{{Port: 8080}}},
+			Name: "external-error-status", Namespace: "default",
+			Spec: corev1.ServiceSpec{Ports: []corev1.ServicePort{{Port: 8080}}},
 		}
 		Expect(k8sClient.Create(ctx, svc)).To(Succeed())
 		DeferCleanup(func() { Expect(k8sClient.Delete(ctx, svc)).To(Succeed()) })
 		DeferCleanup(func() {
-			Expect(k8sClient.Delete(ctx, &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: server.Name, Namespace: server.Namespace}})).To(Succeed())
+			Expect(k8sClient.Delete(ctx, &appsv1.Deployment{Name: server.Name, Namespace: server.Namespace})).To(Succeed())
 		})
 		failPolicy := true
 		wrappedClient, err := client.NewWithWatch(cfg, client.Options{Scheme: k8sClient.Scheme()})
@@ -899,7 +899,7 @@ var _ = Describe("BYO Service failure status", func() {
 		_, err = r.Reconcile(ctx, req)
 		Expect(err).NotTo(HaveOccurred())
 		DeferCleanup(func() {
-			Expect(k8sClient.Delete(ctx, &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: server.Name, Namespace: server.Namespace}})).To(Succeed())
+			Expect(k8sClient.Delete(ctx, &networkingv1.NetworkPolicy{Name: server.Name, Namespace: server.Namespace})).To(Succeed())
 		})
 		Expect(k8sClient.Get(ctx, req.NamespacedName, server)).To(Succeed())
 		Expect(meta.FindStatusCondition(server.Status.Conditions, ConditionTypeAccepted).Status).To(Equal(metav1.ConditionTrue))
@@ -919,9 +919,9 @@ var _ = Describe("Workload identity in failure status", func() {
 		DeferCleanup(func() {
 			for _, obj := range []client.Object{
 				server,
-				&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: server.Namespace}},
-				&corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: server.Namespace}},
-				&networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: server.Namespace}},
+				&appsv1.Deployment{Name: name, Namespace: server.Namespace},
+				&corev1.Service{Name: name, Namespace: server.Namespace},
+				&networkingv1.NetworkPolicy{Name: name, Namespace: server.Namespace},
 			} {
 				Expect(client.IgnoreNotFound(k8sClient.Delete(ctx, obj))).To(Succeed())
 			}
@@ -949,7 +949,7 @@ var _ = Describe("Workload identity in failure status", func() {
 			})
 		} else {
 			server.Spec.Config.EnvFrom = []corev1.EnvFromSource{{ConfigMapRef: &corev1.ConfigMapEnvSource{
-				LocalObjectReference: corev1.LocalObjectReference{Name: "missing-identity-config"},
+				Name: "missing-identity-config",
 			}}}
 		}
 		Expect(k8sClient.Update(ctx, server)).To(Succeed())

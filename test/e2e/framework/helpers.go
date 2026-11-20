@@ -41,6 +41,7 @@ import (
 	"sigs.k8s.io/e2e-framework/klient/wait/conditions"
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
 
+	mcpv1 "github.com/kubernetes-sigs/mcp-lifecycle-operator/api/v1"
 	mcpv1alpha1 "github.com/kubernetes-sigs/mcp-lifecycle-operator/api/v1alpha1"
 	mcpv1beta1 "github.com/kubernetes-sigs/mcp-lifecycle-operator/api/v1beta1"
 	mcpcontroller "github.com/kubernetes-sigs/mcp-lifecycle-operator/internal/controller"
@@ -323,7 +324,7 @@ func TeardownMCPServer(ctx context.Context, t *testing.T, cfg *envconf.Config) c
 	go func() {
 		defer wg.Done()
 		dep := &appsv1.Deployment{
-			ObjectMeta: metav1.ObjectMeta{Name: server.Name, Namespace: server.Namespace},
+			Name: server.Name, Namespace: server.Namespace,
 		}
 		if err := wait.For(
 			conditions.New(r).ResourceDeleted(dep),
@@ -337,7 +338,7 @@ func TeardownMCPServer(ctx context.Context, t *testing.T, cfg *envconf.Config) c
 	go func() {
 		defer wg.Done()
 		svc := &corev1.Service{
-			ObjectMeta: metav1.ObjectMeta{Name: server.Name, Namespace: server.Namespace},
+			Name: server.Name, Namespace: server.Namespace,
 		}
 		if err := wait.For(
 			conditions.New(r).ResourceDeleted(svc),
@@ -351,7 +352,7 @@ func TeardownMCPServer(ctx context.Context, t *testing.T, cfg *envconf.Config) c
 	go func() {
 		defer wg.Done()
 		netpol := &networkingv1.NetworkPolicy{
-			ObjectMeta: metav1.ObjectMeta{Name: server.Name, Namespace: server.Namespace},
+			Name: server.Name, Namespace: server.Namespace,
 		}
 		if err := wait.For(
 			conditions.New(r).ResourceDeleted(netpol),
@@ -414,11 +415,9 @@ func CreateGatewayConfigMap(ctx context.Context, t *testing.T, cfg *envconf.Conf
 	name, namespace string, configData map[string]string) {
 	t.Helper()
 	cm := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-		},
-		Data: configData,
+		Name:      name,
+		Namespace: namespace,
+		Data:      configData,
 	}
 	if err := cfg.Client().Resources().Create(ctx, cm); err != nil {
 		t.Fatalf("failed to create gateway ConfigMap: %v", err)
@@ -433,10 +432,8 @@ func UpdateGatewayConfigMap(ctx context.Context, t *testing.T, cfg *envconf.Conf
 	t.Helper()
 	r := cfg.Client().Resources()
 	cm := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-		},
+		Name:      name,
+		Namespace: namespace,
 	}
 	UpdateWithRetry(ctx, t, r, cm, func(c *corev1.ConfigMap) {
 		c.Data = data
@@ -590,7 +587,7 @@ func DumpDiagnostics(ctx context.Context, t *testing.T, cfg *envconf.Config, ns 
 	t.Log("=== DIAGNOSTICS DUMP (test failed) ===")
 	r := cfg.Client().Resources(ns)
 
-	var servers mcpv1alpha1.MCPServerList
+	var servers mcpv1.MCPServerList
 	if err := r.List(ctx, &servers); err == nil {
 		for _, s := range servers.Items {
 			t.Logf("MCPServer %s/%s generation=%d observedGeneration=%d",

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	mcpv1beta1 "github.com/kubernetes-sigs/mcp-lifecycle-operator/api/v1beta1"
+	mcpv1 "github.com/kubernetes-sigs/mcp-lifecycle-operator/api/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -18,7 +18,7 @@ type want struct {
 }
 
 type extraMetaArgs struct {
-	mcp           *mcpv1beta1.MCPServer
+	mcp           *mcpv1.MCPServer
 	deployment    *appsv1.Deployment
 	service       *corev1.Service
 	networkPolicy *networkingv1.NetworkPolicy
@@ -241,11 +241,9 @@ func Test_filterReservedAnnotationKeys(t *testing.T) {
 func Test_applyCustomDeploymentMetadata(t *testing.T) {
 	deployment := func() *appsv1.Deployment {
 		return &appsv1.Deployment{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "web",
-				Labels: map[string]string{
-					LabelKeyApp: "web",
-				},
+			Name: "web",
+			Labels: map[string]string{
+				LabelKeyApp: "web",
 			},
 			Spec: appsv1.DeploymentSpec{
 				Selector: &metav1.LabelSelector{
@@ -272,17 +270,15 @@ func Test_applyCustomDeploymentMetadata(t *testing.T) {
 		{
 			name: "deployment without extra metadata",
 			args: extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{},
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{},
 				},
 				deployment: deployment(),
 			},
 			want: &appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "web",
-					Labels: map[string]string{
-						LabelKeyApp: "web",
-					},
+				Name: "web",
+				Labels: map[string]string{
+					LabelKeyApp: "web",
 				},
 				Spec: appsv1.DeploymentSpec{
 					Selector: &metav1.LabelSelector{
@@ -303,8 +299,8 @@ func Test_applyCustomDeploymentMetadata(t *testing.T) {
 		{
 			name: "deployment with extra annotations",
 			args: extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraAnnotations: map[string]string{
 							"department": "finance",
 						},
@@ -313,15 +309,13 @@ func Test_applyCustomDeploymentMetadata(t *testing.T) {
 				deployment: deployment(),
 			},
 			want: &appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "web",
-					Labels: map[string]string{
-						LabelKeyApp: "web",
-					},
-					Annotations: map[string]string{
-						"department":                             "finance",
-						"mcp.x-k8s.io/managed-extra-annotations": "{\"department\":\"finance\"}",
-					},
+				Name: "web",
+				Labels: map[string]string{
+					LabelKeyApp: "web",
+				},
+				Annotations: map[string]string{
+					"department":                             "finance",
+					"mcp.x-k8s.io/managed-extra-annotations": "{\"department\":\"finance\"}",
 				},
 				Spec: appsv1.DeploymentSpec{
 					Selector: &metav1.LabelSelector{
@@ -345,8 +339,8 @@ func Test_applyCustomDeploymentMetadata(t *testing.T) {
 		{
 			name: "deployment with extra labels",
 			args: extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraLabels: map[string]string{
 							"kubernetes.io/managed-by": "mcp-lifecyle-operator",
 						},
@@ -355,15 +349,13 @@ func Test_applyCustomDeploymentMetadata(t *testing.T) {
 				deployment: deployment(),
 			},
 			want: &appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "web",
-					Labels: map[string]string{
-						LabelKeyApp:                "web",
-						"kubernetes.io/managed-by": "mcp-lifecyle-operator",
-					},
-					Annotations: map[string]string{
-						"mcp.x-k8s.io/managed-extra-labels": "{\"kubernetes.io/managed-by\":\"mcp-lifecyle-operator\"}",
-					},
+				Name: "web",
+				Labels: map[string]string{
+					LabelKeyApp:                "web",
+					"kubernetes.io/managed-by": "mcp-lifecyle-operator",
+				},
+				Annotations: map[string]string{
+					"mcp.x-k8s.io/managed-extra-labels": "{\"kubernetes.io/managed-by\":\"mcp-lifecyle-operator\"}",
 				},
 				Spec: appsv1.DeploymentSpec{
 					Selector: &metav1.LabelSelector{
@@ -385,19 +377,17 @@ func Test_applyCustomDeploymentMetadata(t *testing.T) {
 		{
 			name: "remove all custom labels on deployment",
 			args: extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{},
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{},
 				},
 				deployment: &appsv1.Deployment{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "web",
-						Labels: map[string]string{
-							LabelKeyApp:                "web",
-							"kubernetes.io/managed-by": "mcp-lifecyle-operator",
-						},
-						Annotations: map[string]string{
-							"mcp.x-k8s.io/managed-extra-labels": "{\"kubernetes.io/managed-by\":\"mcp-lifecyle-operator\"}",
-						},
+					Name: "web",
+					Labels: map[string]string{
+						LabelKeyApp:                "web",
+						"kubernetes.io/managed-by": "mcp-lifecyle-operator",
+					},
+					Annotations: map[string]string{
+						"mcp.x-k8s.io/managed-extra-labels": "{\"kubernetes.io/managed-by\":\"mcp-lifecyle-operator\"}",
 					},
 					Spec: appsv1.DeploymentSpec{
 						Selector: &metav1.LabelSelector{
@@ -417,11 +407,9 @@ func Test_applyCustomDeploymentMetadata(t *testing.T) {
 				},
 			},
 			want: &appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "web",
-					Labels: map[string]string{
-						LabelKeyApp: "web",
-					},
+				Name: "web",
+				Labels: map[string]string{
+					LabelKeyApp: "web",
 				},
 				Spec: appsv1.DeploymentSpec{
 					Selector: &metav1.LabelSelector{
@@ -442,24 +430,22 @@ func Test_applyCustomDeploymentMetadata(t *testing.T) {
 		{
 			name: "remove some custom labels on deployment",
 			args: extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraLabels: map[string]string{
 							"department": "procurement",
 						},
 					},
 				},
 				deployment: &appsv1.Deployment{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "web",
-						Labels: map[string]string{
-							LabelKeyApp:                "web",
-							"department":               "procurement",
-							"kubernetes.io/managed-by": "mcp-lifecyle-operator",
-						},
-						Annotations: map[string]string{
-							"mcp.x-k8s.io/managed-extra-labels": "{\"kubernetes.io/managed-by\":\"mcp-lifecyle-operator\", \"department\": \"procurement\"}",
-						},
+					Name: "web",
+					Labels: map[string]string{
+						LabelKeyApp:                "web",
+						"department":               "procurement",
+						"kubernetes.io/managed-by": "mcp-lifecyle-operator",
+					},
+					Annotations: map[string]string{
+						"mcp.x-k8s.io/managed-extra-labels": "{\"kubernetes.io/managed-by\":\"mcp-lifecyle-operator\", \"department\": \"procurement\"}",
 					},
 					Spec: appsv1.DeploymentSpec{
 						Selector: &metav1.LabelSelector{
@@ -480,15 +466,13 @@ func Test_applyCustomDeploymentMetadata(t *testing.T) {
 				},
 			},
 			want: &appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "web",
-					Labels: map[string]string{
-						LabelKeyApp:  "web",
-						"department": "procurement",
-					},
-					Annotations: map[string]string{
-						"mcp.x-k8s.io/managed-extra-labels": "{\"department\":\"procurement\"}",
-					},
+				Name: "web",
+				Labels: map[string]string{
+					LabelKeyApp:  "web",
+					"department": "procurement",
+				},
+				Annotations: map[string]string{
+					"mcp.x-k8s.io/managed-extra-labels": "{\"department\":\"procurement\"}",
 				},
 				Spec: appsv1.DeploymentSpec{
 					Selector: &metav1.LabelSelector{
@@ -510,8 +494,8 @@ func Test_applyCustomDeploymentMetadata(t *testing.T) {
 		{
 			name: "deployment with both extra labels and extra annotations",
 			args: extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraLabels: map[string]string{
 							"team": "platform",
 						},
@@ -523,17 +507,15 @@ func Test_applyCustomDeploymentMetadata(t *testing.T) {
 				deployment: deployment(),
 			},
 			want: &appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "web",
-					Labels: map[string]string{
-						LabelKeyApp: "web",
-						"team":      "platform",
-					},
-					Annotations: map[string]string{
-						"cost-center":                            "engineering",
-						"mcp.x-k8s.io/managed-extra-labels":      "{\"team\":\"platform\"}",
-						"mcp.x-k8s.io/managed-extra-annotations": "{\"cost-center\":\"engineering\"}",
-					},
+				Name: "web",
+				Labels: map[string]string{
+					LabelKeyApp: "web",
+					"team":      "platform",
+				},
+				Annotations: map[string]string{
+					"cost-center":                            "engineering",
+					"mcp.x-k8s.io/managed-extra-labels":      "{\"team\":\"platform\"}",
+					"mcp.x-k8s.io/managed-extra-annotations": "{\"cost-center\":\"engineering\"}",
 				},
 				Spec: appsv1.DeploymentSpec{
 					Selector: &metav1.LabelSelector{
@@ -558,8 +540,8 @@ func Test_applyCustomDeploymentMetadata(t *testing.T) {
 		{
 			name: "deployment with nil labels and annotations maps",
 			args: extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraLabels: map[string]string{
 							"team": "platform",
 						},
@@ -569,25 +551,21 @@ func Test_applyCustomDeploymentMetadata(t *testing.T) {
 					},
 				},
 				deployment: &appsv1.Deployment{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "web",
-					},
+					Name: "web",
 					Spec: appsv1.DeploymentSpec{
 						Template: corev1.PodTemplateSpec{},
 					},
 				},
 			},
 			want: &appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "web",
-					Labels: map[string]string{
-						"team": "platform",
-					},
-					Annotations: map[string]string{
-						"cost-center":                            "engineering",
-						"mcp.x-k8s.io/managed-extra-labels":      "{\"team\":\"platform\"}",
-						"mcp.x-k8s.io/managed-extra-annotations": "{\"cost-center\":\"engineering\"}",
-					},
+				Name: "web",
+				Labels: map[string]string{
+					"team": "platform",
+				},
+				Annotations: map[string]string{
+					"cost-center":                            "engineering",
+					"mcp.x-k8s.io/managed-extra-labels":      "{\"team\":\"platform\"}",
+					"mcp.x-k8s.io/managed-extra-annotations": "{\"cost-center\":\"engineering\"}",
 				},
 				Spec: appsv1.DeploymentSpec{
 					Template: corev1.PodTemplateSpec{
@@ -606,8 +584,8 @@ func Test_applyCustomDeploymentMetadata(t *testing.T) {
 		{
 			name: "reserved annotation keys in ExtraAnnotations are filtered out",
 			args: extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraAnnotations: map[string]string{
 							"department":                             "finance",
 							"mcp.x-k8s.io/config-hash":               "malicious-hash",
@@ -619,15 +597,13 @@ func Test_applyCustomDeploymentMetadata(t *testing.T) {
 				deployment: deployment(),
 			},
 			want: &appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "web",
-					Labels: map[string]string{
-						LabelKeyApp: "web",
-					},
-					Annotations: map[string]string{
-						"department":                             "finance",
-						"mcp.x-k8s.io/managed-extra-annotations": "{\"department\":\"finance\"}",
-					},
+				Name: "web",
+				Labels: map[string]string{
+					LabelKeyApp: "web",
+				},
+				Annotations: map[string]string{
+					"department":                             "finance",
+					"mcp.x-k8s.io/managed-extra-annotations": "{\"department\":\"finance\"}",
 				},
 				Spec: appsv1.DeploymentSpec{
 					Selector: &metav1.LabelSelector{
@@ -695,15 +671,13 @@ func Test_applyCustomDeploymentMetadata_errors(t *testing.T) {
 		{
 			name: "corrupted JSON in managed labels annotation",
 			args: extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{},
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{},
 				},
 				deployment: &appsv1.Deployment{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{LabelKeyApp: "web"},
-						Annotations: map[string]string{
-							managedExtraLabels: "not-valid-json",
-						},
+					Labels: map[string]string{LabelKeyApp: "web"},
+					Annotations: map[string]string{
+						managedExtraLabels: "not-valid-json",
 					},
 					Spec: appsv1.DeploymentSpec{
 						Template: corev1.PodTemplateSpec{
@@ -719,15 +693,13 @@ func Test_applyCustomDeploymentMetadata_errors(t *testing.T) {
 		{
 			name: "corrupted JSON in managed annotations annotation",
 			args: extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{},
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{},
 				},
 				deployment: &appsv1.Deployment{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{LabelKeyApp: "web"},
-						Annotations: map[string]string{
-							managedExtraAnnotations: "not-valid-json",
-						},
+					Labels: map[string]string{LabelKeyApp: "web"},
+					Annotations: map[string]string{
+						managedExtraAnnotations: "not-valid-json",
 					},
 					Spec: appsv1.DeploymentSpec{
 						Template: corev1.PodTemplateSpec{
@@ -764,15 +736,13 @@ func Test_applyCustomServiceMetadata_errors(t *testing.T) {
 		{
 			name: "corrupted JSON in managed labels annotation",
 			args: extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{},
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{},
 				},
 				service: &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{LabelKeyApp: "web"},
-						Annotations: map[string]string{
-							managedExtraLabels: "not-valid-json",
-						},
+					Labels: map[string]string{LabelKeyApp: "web"},
+					Annotations: map[string]string{
+						managedExtraLabels: "not-valid-json",
 					},
 				},
 			},
@@ -781,15 +751,13 @@ func Test_applyCustomServiceMetadata_errors(t *testing.T) {
 		{
 			name: "corrupted JSON in managed annotations annotation",
 			args: extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{},
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{},
 				},
 				service: &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{LabelKeyApp: "web"},
-						Annotations: map[string]string{
-							managedExtraAnnotations: "not-valid-json",
-						},
+					Labels: map[string]string{LabelKeyApp: "web"},
+					Annotations: map[string]string{
+						managedExtraAnnotations: "not-valid-json",
 					},
 				},
 			},
@@ -819,45 +787,54 @@ func Test_applyCustomServiceMetadata(t *testing.T) {
 		{
 			name: "render service without extra metadata",
 			args: extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{},
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{},
 				},
 				service: &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp: "webserver",
-						},
+					Labels: map[string]string{
+						LabelKeyApp: "webserver",
 					},
 				},
 			},
 			want: &corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						LabelKeyApp: "webserver",
-					},
+				Labels: map[string]string{
+					LabelKeyApp: "webserver",
 				},
 			},
 		},
 		{
 			name: "render service with extra labels",
 			args: extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraLabels: map[string]string{
 							"kubernetes.io/managed-by": "mcp-lifecycle-operator",
 						},
 					},
 				},
 				service: &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp: "webserver",
-						},
+					Labels: map[string]string{
+						LabelKeyApp: "webserver",
 					},
 				},
 			},
 			want: &corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{
+					LabelKeyApp:                "webserver",
+					"kubernetes.io/managed-by": "mcp-lifecycle-operator",
+				},
+				Annotations: map[string]string{
+					"mcp.x-k8s.io/managed-extra-labels": "{\"kubernetes.io/managed-by\":\"mcp-lifecycle-operator\"}",
+				},
+			},
+		},
+		{
+			name: "remove all custom labels on service",
+			args: extraMetaArgs{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{},
+				},
+				service: &corev1.Service{
 					Labels: map[string]string{
 						LabelKeyApp:                "webserver",
 						"kubernetes.io/managed-by": "mcp-lifecycle-operator",
@@ -867,74 +844,49 @@ func Test_applyCustomServiceMetadata(t *testing.T) {
 					},
 				},
 			},
-		},
-		{
-			name: "remove all custom labels on service",
-			args: extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{},
-				},
-				service: &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp:                "webserver",
-							"kubernetes.io/managed-by": "mcp-lifecycle-operator",
-						},
-						Annotations: map[string]string{
-							"mcp.x-k8s.io/managed-extra-labels": "{\"kubernetes.io/managed-by\":\"mcp-lifecycle-operator\"}",
-						},
-					},
-				},
-			},
 			want: &corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						LabelKeyApp: "webserver",
-					},
-					Annotations: map[string]string{},
+				Labels: map[string]string{
+					LabelKeyApp: "webserver",
 				},
+				Annotations: map[string]string{},
 			},
 		},
 		{
 			name: "remove some custom labels on service",
 			args: extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraLabels: map[string]string{
 							"department": "procurement",
 						},
 					},
 				},
 				service: &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp:                "webserver",
-							"department":               "procurement",
-							"kubernetes.io/managed-by": "mcp-lifecycle-operator",
-						},
-						Annotations: map[string]string{
-							"mcp.x-k8s.io/managed-extra-labels": "{\"kubernetes.io/managed-by\":\"mcp-lifecycle-operator\",\"department\":\"procurement\"}",
-						},
+					Labels: map[string]string{
+						LabelKeyApp:                "webserver",
+						"department":               "procurement",
+						"kubernetes.io/managed-by": "mcp-lifecycle-operator",
+					},
+					Annotations: map[string]string{
+						"mcp.x-k8s.io/managed-extra-labels": "{\"kubernetes.io/managed-by\":\"mcp-lifecycle-operator\",\"department\":\"procurement\"}",
 					},
 				},
 			},
 			want: &corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						LabelKeyApp:  "webserver",
-						"department": "procurement",
-					},
-					Annotations: map[string]string{
-						"mcp.x-k8s.io/managed-extra-labels": "{\"department\":\"procurement\"}",
-					},
+				Labels: map[string]string{
+					LabelKeyApp:  "webserver",
+					"department": "procurement",
+				},
+				Annotations: map[string]string{
+					"mcp.x-k8s.io/managed-extra-labels": "{\"department\":\"procurement\"}",
 				},
 			},
 		},
 		{
 			name: "reserved keys in spec are not tracked or removed",
 			args: extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraLabels: map[string]string{
 							LabelKeyApp:       "should-be-ignored",
 							LabelKeyMCPServer: "should-be-ignored",
@@ -943,30 +895,26 @@ func Test_applyCustomServiceMetadata(t *testing.T) {
 					},
 				},
 				service: &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp: "webserver",
-						},
+					Labels: map[string]string{
+						LabelKeyApp: "webserver",
 					},
 				},
 			},
 			want: &corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						LabelKeyApp: "webserver",
-						"env":       "production",
-					},
-					Annotations: map[string]string{
-						"mcp.x-k8s.io/managed-extra-labels": "{\"env\":\"production\"}",
-					},
+				Labels: map[string]string{
+					LabelKeyApp: "webserver",
+					"env":       "production",
+				},
+				Annotations: map[string]string{
+					"mcp.x-k8s.io/managed-extra-labels": "{\"env\":\"production\"}",
 				},
 			},
 		},
 		{
 			name: "render service with both extra labels and extra annotations",
 			args: extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraLabels: map[string]string{
 							"team": "platform",
 						},
@@ -976,32 +924,28 @@ func Test_applyCustomServiceMetadata(t *testing.T) {
 					},
 				},
 				service: &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp: "webserver",
-						},
+					Labels: map[string]string{
+						LabelKeyApp: "webserver",
 					},
 				},
 			},
 			want: &corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						LabelKeyApp: "webserver",
-						"team":      "platform",
-					},
-					Annotations: map[string]string{
-						"cost-center":                            "engineering",
-						"mcp.x-k8s.io/managed-extra-labels":      "{\"team\":\"platform\"}",
-						"mcp.x-k8s.io/managed-extra-annotations": "{\"cost-center\":\"engineering\"}",
-					},
+				Labels: map[string]string{
+					LabelKeyApp: "webserver",
+					"team":      "platform",
+				},
+				Annotations: map[string]string{
+					"cost-center":                            "engineering",
+					"mcp.x-k8s.io/managed-extra-labels":      "{\"team\":\"platform\"}",
+					"mcp.x-k8s.io/managed-extra-annotations": "{\"cost-center\":\"engineering\"}",
 				},
 			},
 		},
 		{
 			name: "render service with nil labels and annotations maps",
 			args: extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraLabels: map[string]string{
 							"team": "platform",
 						},
@@ -1015,53 +959,47 @@ func Test_applyCustomServiceMetadata(t *testing.T) {
 				},
 			},
 			want: &corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						"team": "platform",
-					},
-					Annotations: map[string]string{
-						"cost-center":                            "engineering",
-						"mcp.x-k8s.io/managed-extra-labels":      "{\"team\":\"platform\"}",
-						"mcp.x-k8s.io/managed-extra-annotations": "{\"cost-center\":\"engineering\"}",
-					},
+				Labels: map[string]string{
+					"team": "platform",
+				},
+				Annotations: map[string]string{
+					"cost-center":                            "engineering",
+					"mcp.x-k8s.io/managed-extra-labels":      "{\"team\":\"platform\"}",
+					"mcp.x-k8s.io/managed-extra-annotations": "{\"cost-center\":\"engineering\"}",
 				},
 			},
 		},
 		{
 			name: "render service with extra annotations",
 			args: extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraAnnotations: map[string]string{
 							"department": "finance",
 						},
 					},
 				},
 				service: &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp: "webserver",
-						},
+					Labels: map[string]string{
+						LabelKeyApp: "webserver",
 					},
 				},
 			},
 			want: &corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						LabelKeyApp: "webserver",
-					},
-					Annotations: map[string]string{
-						"department":                             "finance",
-						"mcp.x-k8s.io/managed-extra-annotations": "{\"department\":\"finance\"}",
-					},
+				Labels: map[string]string{
+					LabelKeyApp: "webserver",
+				},
+				Annotations: map[string]string{
+					"department":                             "finance",
+					"mcp.x-k8s.io/managed-extra-annotations": "{\"department\":\"finance\"}",
 				},
 			},
 		},
 		{
 			name: "reserved annotation keys in ExtraAnnotations are filtered out",
 			args: extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraAnnotations: map[string]string{
 							"cost-center":                            "engineering",
 							"mcp.x-k8s.io/config-hash":               "malicious-hash",
@@ -1071,22 +1009,18 @@ func Test_applyCustomServiceMetadata(t *testing.T) {
 					},
 				},
 				service: &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp: "webserver",
-						},
+					Labels: map[string]string{
+						LabelKeyApp: "webserver",
 					},
 				},
 			},
 			want: &corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						LabelKeyApp: "webserver",
-					},
-					Annotations: map[string]string{
-						"cost-center":                            "engineering",
-						"mcp.x-k8s.io/managed-extra-annotations": "{\"cost-center\":\"engineering\"}",
-					},
+				Labels: map[string]string{
+					LabelKeyApp: "webserver",
+				},
+				Annotations: map[string]string{
+					"cost-center":                            "engineering",
+					"mcp.x-k8s.io/managed-extra-annotations": "{\"cost-center\":\"engineering\"}",
 				},
 			},
 		},
@@ -1123,12 +1057,10 @@ func Test_deploymentLabelsChanged(t *testing.T) {
 			name: "add custom metadata to deployment",
 			args: &extraMetaArgs{
 				deployment: &appsv1.Deployment{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp: "webserver",
-						},
-						Annotations: map[string]string{},
+					Labels: map[string]string{
+						LabelKeyApp: "webserver",
 					},
+					Annotations: map[string]string{},
 					Spec: appsv1.DeploymentSpec{
 						Template: corev1.PodTemplateSpec{
 							ObjectMeta: metav1.ObjectMeta{
@@ -1140,8 +1072,8 @@ func Test_deploymentLabelsChanged(t *testing.T) {
 						},
 					},
 				},
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraLabels: map[string]string{
 							"department": "procurement",
 						},
@@ -1154,14 +1086,12 @@ func Test_deploymentLabelsChanged(t *testing.T) {
 			name: "remove all custom metadata on deployment",
 			args: &extraMetaArgs{
 				deployment: &appsv1.Deployment{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp:  "webserver",
-							"department": "procurement",
-						},
-						Annotations: map[string]string{
-							managedExtraLabels: "{\"department\":\"procurement\"}",
-						},
+					Labels: map[string]string{
+						LabelKeyApp:  "webserver",
+						"department": "procurement",
+					},
+					Annotations: map[string]string{
+						managedExtraLabels: "{\"department\":\"procurement\"}",
 					},
 					Spec: appsv1.DeploymentSpec{
 						Template: corev1.PodTemplateSpec{
@@ -1175,8 +1105,8 @@ func Test_deploymentLabelsChanged(t *testing.T) {
 						},
 					},
 				},
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{},
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{},
 				},
 			},
 			want: true,
@@ -1185,14 +1115,12 @@ func Test_deploymentLabelsChanged(t *testing.T) {
 			name: "no changes to custom metadata on deployment",
 			args: &extraMetaArgs{
 				deployment: &appsv1.Deployment{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp:  "webserver",
-							"department": "procurement",
-						},
-						Annotations: map[string]string{
-							managedExtraLabels: "{\"department\":\"procurement\"}",
-						},
+					Labels: map[string]string{
+						LabelKeyApp:  "webserver",
+						"department": "procurement",
+					},
+					Annotations: map[string]string{
+						managedExtraLabels: "{\"department\":\"procurement\"}",
 					},
 					Spec: appsv1.DeploymentSpec{
 						Template: corev1.PodTemplateSpec{
@@ -1206,8 +1134,8 @@ func Test_deploymentLabelsChanged(t *testing.T) {
 						},
 					},
 				},
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraLabels: map[string]string{
 							"department": "procurement",
 						},
@@ -1220,13 +1148,11 @@ func Test_deploymentLabelsChanged(t *testing.T) {
 			name: "corrupted JSON in managed labels annotation forces update",
 			args: &extraMetaArgs{
 				deployment: &appsv1.Deployment{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp: "webserver",
-						},
-						Annotations: map[string]string{
-							managedExtraLabels: "not-valid-json",
-						},
+					Labels: map[string]string{
+						LabelKeyApp: "webserver",
+					},
+					Annotations: map[string]string{
+						managedExtraLabels: "not-valid-json",
 					},
 					Spec: appsv1.DeploymentSpec{
 						Template: corev1.PodTemplateSpec{
@@ -1239,8 +1165,8 @@ func Test_deploymentLabelsChanged(t *testing.T) {
 						},
 					},
 				},
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{},
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{},
 				},
 			},
 			want: true,
@@ -1249,14 +1175,12 @@ func Test_deploymentLabelsChanged(t *testing.T) {
 			name: "spec labels changed from tracked labels on deployment",
 			args: &extraMetaArgs{
 				deployment: &appsv1.Deployment{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp:  "webserver",
-							"department": "procurement",
-						},
-						Annotations: map[string]string{
-							managedExtraLabels: "{\"department\":\"procurement\"}",
-						},
+					Labels: map[string]string{
+						LabelKeyApp:  "webserver",
+						"department": "procurement",
+					},
+					Annotations: map[string]string{
+						managedExtraLabels: "{\"department\":\"procurement\"}",
 					},
 					Spec: appsv1.DeploymentSpec{
 						Template: corev1.PodTemplateSpec{
@@ -1269,8 +1193,8 @@ func Test_deploymentLabelsChanged(t *testing.T) {
 						},
 					},
 				},
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraLabels: map[string]string{
 							"department": "engineering",
 						},
@@ -1283,13 +1207,11 @@ func Test_deploymentLabelsChanged(t *testing.T) {
 			name: "label tracked but missing from deployment.Labels",
 			args: &extraMetaArgs{
 				deployment: &appsv1.Deployment{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp: "webserver",
-						},
-						Annotations: map[string]string{
-							managedExtraLabels: "{\"department\":\"procurement\"}",
-						},
+					Labels: map[string]string{
+						LabelKeyApp: "webserver",
+					},
+					Annotations: map[string]string{
+						managedExtraLabels: "{\"department\":\"procurement\"}",
 					},
 					Spec: appsv1.DeploymentSpec{
 						Template: corev1.PodTemplateSpec{
@@ -1302,8 +1224,8 @@ func Test_deploymentLabelsChanged(t *testing.T) {
 						},
 					},
 				},
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraLabels: map[string]string{
 							"department": "procurement",
 						},
@@ -1316,14 +1238,12 @@ func Test_deploymentLabelsChanged(t *testing.T) {
 			name: "label tracked but missing from pod template labels",
 			args: &extraMetaArgs{
 				deployment: &appsv1.Deployment{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp:  "webserver",
-							"department": "procurement",
-						},
-						Annotations: map[string]string{
-							managedExtraLabels: "{\"department\":\"procurement\"}",
-						},
+					Labels: map[string]string{
+						LabelKeyApp:  "webserver",
+						"department": "procurement",
+					},
+					Annotations: map[string]string{
+						managedExtraLabels: "{\"department\":\"procurement\"}",
 					},
 					Spec: appsv1.DeploymentSpec{
 						Template: corev1.PodTemplateSpec{
@@ -1335,8 +1255,8 @@ func Test_deploymentLabelsChanged(t *testing.T) {
 						},
 					},
 				},
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraLabels: map[string]string{
 							"department": "procurement",
 						},
@@ -1367,12 +1287,10 @@ func Test_deploymentAnnotationsChanged(t *testing.T) {
 			name: "add custom metadata to deployment",
 			args: &extraMetaArgs{
 				deployment: &appsv1.Deployment{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp: "webserver",
-						},
-						Annotations: map[string]string{},
+					Labels: map[string]string{
+						LabelKeyApp: "webserver",
 					},
+					Annotations: map[string]string{},
 					Spec: appsv1.DeploymentSpec{
 						Template: corev1.PodTemplateSpec{
 							ObjectMeta: metav1.ObjectMeta{
@@ -1384,8 +1302,8 @@ func Test_deploymentAnnotationsChanged(t *testing.T) {
 						},
 					},
 				},
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraAnnotations: map[string]string{
 							"department": "procurement",
 						},
@@ -1398,14 +1316,12 @@ func Test_deploymentAnnotationsChanged(t *testing.T) {
 			name: "remove all custom metadata on deployment",
 			args: &extraMetaArgs{
 				deployment: &appsv1.Deployment{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp: "webserver",
-						},
-						Annotations: map[string]string{
-							managedExtraAnnotations: "{\"department\":\"procurement\"}",
-							"department":            "procurement",
-						},
+					Labels: map[string]string{
+						LabelKeyApp: "webserver",
+					},
+					Annotations: map[string]string{
+						managedExtraAnnotations: "{\"department\":\"procurement\"}",
+						"department":            "procurement",
 					},
 					Spec: appsv1.DeploymentSpec{
 						Template: corev1.PodTemplateSpec{
@@ -1421,8 +1337,8 @@ func Test_deploymentAnnotationsChanged(t *testing.T) {
 						},
 					},
 				},
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{},
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{},
 				},
 			},
 			want: true,
@@ -1431,14 +1347,12 @@ func Test_deploymentAnnotationsChanged(t *testing.T) {
 			name: "no changes to custom metadata on deployment",
 			args: &extraMetaArgs{
 				deployment: &appsv1.Deployment{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp: "webserver",
-						},
-						Annotations: map[string]string{
-							managedExtraAnnotations: "{\"department\":\"procurement\"}",
-							"department":            "procurement",
-						},
+					Labels: map[string]string{
+						LabelKeyApp: "webserver",
+					},
+					Annotations: map[string]string{
+						managedExtraAnnotations: "{\"department\":\"procurement\"}",
+						"department":            "procurement",
 					},
 					Spec: appsv1.DeploymentSpec{
 						Template: corev1.PodTemplateSpec{
@@ -1454,8 +1368,8 @@ func Test_deploymentAnnotationsChanged(t *testing.T) {
 						},
 					},
 				},
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraAnnotations: map[string]string{
 							"department": "procurement",
 						},
@@ -1468,13 +1382,11 @@ func Test_deploymentAnnotationsChanged(t *testing.T) {
 			name: "corrupted JSON in managed annotations annotation forces update",
 			args: &extraMetaArgs{
 				deployment: &appsv1.Deployment{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp: "webserver",
-						},
-						Annotations: map[string]string{
-							managedExtraAnnotations: "not-valid-json",
-						},
+					Labels: map[string]string{
+						LabelKeyApp: "webserver",
+					},
+					Annotations: map[string]string{
+						managedExtraAnnotations: "not-valid-json",
 					},
 					Spec: appsv1.DeploymentSpec{
 						Template: corev1.PodTemplateSpec{
@@ -1487,8 +1399,8 @@ func Test_deploymentAnnotationsChanged(t *testing.T) {
 						},
 					},
 				},
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{},
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{},
 				},
 			},
 			want: true,
@@ -1497,14 +1409,12 @@ func Test_deploymentAnnotationsChanged(t *testing.T) {
 			name: "spec annotations changed from tracked annotations on deployment",
 			args: &extraMetaArgs{
 				deployment: &appsv1.Deployment{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp: "webserver",
-						},
-						Annotations: map[string]string{
-							managedExtraAnnotations: "{\"department\":\"procurement\"}",
-							"department":            "procurement",
-						},
+					Labels: map[string]string{
+						LabelKeyApp: "webserver",
+					},
+					Annotations: map[string]string{
+						managedExtraAnnotations: "{\"department\":\"procurement\"}",
+						"department":            "procurement",
 					},
 					Spec: appsv1.DeploymentSpec{
 						Template: corev1.PodTemplateSpec{
@@ -1519,8 +1429,8 @@ func Test_deploymentAnnotationsChanged(t *testing.T) {
 						},
 					},
 				},
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraAnnotations: map[string]string{
 							"department": "engineering",
 						},
@@ -1533,13 +1443,11 @@ func Test_deploymentAnnotationsChanged(t *testing.T) {
 			name: "annotation tracked but missing from deployment.Annotations",
 			args: &extraMetaArgs{
 				deployment: &appsv1.Deployment{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp: "webserver",
-						},
-						Annotations: map[string]string{
-							managedExtraAnnotations: "{\"department\":\"procurement\"}",
-						},
+					Labels: map[string]string{
+						LabelKeyApp: "webserver",
+					},
+					Annotations: map[string]string{
+						managedExtraAnnotations: "{\"department\":\"procurement\"}",
 					},
 					Spec: appsv1.DeploymentSpec{
 						Template: corev1.PodTemplateSpec{
@@ -1554,8 +1462,8 @@ func Test_deploymentAnnotationsChanged(t *testing.T) {
 						},
 					},
 				},
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraAnnotations: map[string]string{
 							"department": "procurement",
 						},
@@ -1568,14 +1476,12 @@ func Test_deploymentAnnotationsChanged(t *testing.T) {
 			name: "annotation tracked but missing from pod template annotations",
 			args: &extraMetaArgs{
 				deployment: &appsv1.Deployment{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp: "webserver",
-						},
-						Annotations: map[string]string{
-							managedExtraAnnotations: "{\"department\":\"procurement\"}",
-							"department":            "procurement",
-						},
+					Labels: map[string]string{
+						LabelKeyApp: "webserver",
+					},
+					Annotations: map[string]string{
+						managedExtraAnnotations: "{\"department\":\"procurement\"}",
+						"department":            "procurement",
 					},
 					Spec: appsv1.DeploymentSpec{
 						Template: corev1.PodTemplateSpec{
@@ -1587,8 +1493,8 @@ func Test_deploymentAnnotationsChanged(t *testing.T) {
 						},
 					},
 				},
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraAnnotations: map[string]string{
 							"department": "procurement",
 						},
@@ -1618,16 +1524,14 @@ func Test_serviceLabelsChanged(t *testing.T) {
 		{
 			name: "no custom metadata provided",
 			args: &extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraLabels: map[string]string{},
 					},
 				},
 				service: &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp: "mariadb-mcp",
-						},
+					Labels: map[string]string{
+						LabelKeyApp: "mariadb-mcp",
 					},
 				},
 			},
@@ -1636,22 +1540,20 @@ func Test_serviceLabelsChanged(t *testing.T) {
 		{
 			name: "custom metadata matches .spec.extraLabels",
 			args: &extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraLabels: map[string]string{
 							"department": "procurement",
 						},
 					},
 				},
 				service: &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp:  "mariadb-mcp",
-							"department": "procurement",
-						},
-						Annotations: map[string]string{
-							managedExtraLabels: "{\"department\":\"procurement\"}",
-						},
+					Labels: map[string]string{
+						LabelKeyApp:  "mariadb-mcp",
+						"department": "procurement",
+					},
+					Annotations: map[string]string{
+						managedExtraLabels: "{\"department\":\"procurement\"}",
 					},
 				},
 			},
@@ -1660,8 +1562,8 @@ func Test_serviceLabelsChanged(t *testing.T) {
 		{
 			name: "service missing custom labels defined in .spec.extraLabels",
 			args: &extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraLabels: map[string]string{
 							"department": "procurement",
 							"env":        "production",
@@ -1669,14 +1571,12 @@ func Test_serviceLabelsChanged(t *testing.T) {
 					},
 				},
 				service: &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp:  "mariadb-mcp",
-							"department": "procurement",
-						},
-						Annotations: map[string]string{
-							managedExtraLabels: "{\"department\":\"procurement\",\"env\": \"production\"}",
-						},
+					Labels: map[string]string{
+						LabelKeyApp:  "mariadb-mcp",
+						"department": "procurement",
+					},
+					Annotations: map[string]string{
+						managedExtraLabels: "{\"department\":\"procurement\",\"env\": \"production\"}",
 					},
 				},
 			},
@@ -1685,17 +1585,15 @@ func Test_serviceLabelsChanged(t *testing.T) {
 		{
 			name: "corrupted JSON in managed labels annotation forces update",
 			args: &extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{},
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{},
 				},
 				service: &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp: "mariadb-mcp",
-						},
-						Annotations: map[string]string{
-							managedExtraLabels: "not-valid-json",
-						},
+					Labels: map[string]string{
+						LabelKeyApp: "mariadb-mcp",
+					},
+					Annotations: map[string]string{
+						managedExtraLabels: "not-valid-json",
 					},
 				},
 			},
@@ -1704,21 +1602,19 @@ func Test_serviceLabelsChanged(t *testing.T) {
 		{
 			name: "label tracked but missing from service.Labels",
 			args: &extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraLabels: map[string]string{
 							"department": "procurement",
 						},
 					},
 				},
 				service: &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp: "mariadb-mcp",
-						},
-						Annotations: map[string]string{
-							managedExtraLabels: "{\"department\":\"procurement\"}",
-						},
+					Labels: map[string]string{
+						LabelKeyApp: "mariadb-mcp",
+					},
+					Annotations: map[string]string{
+						managedExtraLabels: "{\"department\":\"procurement\"}",
 					},
 				},
 			},
@@ -1727,22 +1623,20 @@ func Test_serviceLabelsChanged(t *testing.T) {
 		{
 			name: "spec labels changed from tracked labels",
 			args: &extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraLabels: map[string]string{
 							"department": "engineering",
 						},
 					},
 				},
 				service: &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp:  "mariadb-mcp",
-							"department": "procurement",
-						},
-						Annotations: map[string]string{
-							managedExtraLabels: "{\"department\":\"procurement\"}",
-						},
+					Labels: map[string]string{
+						LabelKeyApp:  "mariadb-mcp",
+						"department": "procurement",
+					},
+					Annotations: map[string]string{
+						managedExtraLabels: "{\"department\":\"procurement\"}",
 					},
 				},
 			},
@@ -1751,18 +1645,16 @@ func Test_serviceLabelsChanged(t *testing.T) {
 		{
 			name: "all spec labels removed but tracked labels exist",
 			args: &extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{},
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{},
 				},
 				service: &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp:  "mariadb-mcp",
-							"department": "procurement",
-						},
-						Annotations: map[string]string{
-							managedExtraLabels: "{\"department\":\"procurement\"}",
-						},
+					Labels: map[string]string{
+						LabelKeyApp:  "mariadb-mcp",
+						"department": "procurement",
+					},
+					Annotations: map[string]string{
+						managedExtraLabels: "{\"department\":\"procurement\"}",
 					},
 				},
 			},
@@ -1789,16 +1681,14 @@ func Test_serviceAnnotationsChanged(t *testing.T) {
 		{
 			name: "no custom metadata provided",
 			args: &extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						// ExtraAnnotations: map[string]string{},
 					},
 				},
 				service: &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp: "mariadb-mcp",
-						},
+					Labels: map[string]string{
+						LabelKeyApp: "mariadb-mcp",
 					},
 				},
 			},
@@ -1807,22 +1697,20 @@ func Test_serviceAnnotationsChanged(t *testing.T) {
 		{
 			name: "custom metadata matches .spec.extraAnnotations",
 			args: &extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraAnnotations: map[string]string{
 							"department": "procurement",
 						},
 					},
 				},
 				service: &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp: "mariadb-mcp",
-						},
-						Annotations: map[string]string{
-							managedExtraAnnotations: "{\"department\":\"procurement\"}",
-							"department":            "procurement",
-						},
+					Labels: map[string]string{
+						LabelKeyApp: "mariadb-mcp",
+					},
+					Annotations: map[string]string{
+						managedExtraAnnotations: "{\"department\":\"procurement\"}",
+						"department":            "procurement",
 					},
 				},
 			},
@@ -1831,8 +1719,8 @@ func Test_serviceAnnotationsChanged(t *testing.T) {
 		{
 			name: "service missing custom labels defined in .spec.extraLabels",
 			args: &extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraAnnotations: map[string]string{
 							"department": "procurement",
 							"env":        "production",
@@ -1840,14 +1728,12 @@ func Test_serviceAnnotationsChanged(t *testing.T) {
 					},
 				},
 				service: &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp: "mariadb-mcp",
-						},
-						Annotations: map[string]string{
-							managedExtraAnnotations: "{\"department\":\"procurement\",\"env\": \"production\"}",
-							"department":            "procurement",
-						},
+					Labels: map[string]string{
+						LabelKeyApp: "mariadb-mcp",
+					},
+					Annotations: map[string]string{
+						managedExtraAnnotations: "{\"department\":\"procurement\",\"env\": \"production\"}",
+						"department":            "procurement",
 					},
 				},
 			},
@@ -1856,17 +1742,15 @@ func Test_serviceAnnotationsChanged(t *testing.T) {
 		{
 			name: "corrupted JSON in managed annotations annotation forces update",
 			args: &extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{},
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{},
 				},
 				service: &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp: "mariadb-mcp",
-						},
-						Annotations: map[string]string{
-							managedExtraAnnotations: "not-valid-json",
-						},
+					Labels: map[string]string{
+						LabelKeyApp: "mariadb-mcp",
+					},
+					Annotations: map[string]string{
+						managedExtraAnnotations: "not-valid-json",
 					},
 				},
 			},
@@ -1875,21 +1759,19 @@ func Test_serviceAnnotationsChanged(t *testing.T) {
 		{
 			name: "annotation tracked but missing from service.Annotations",
 			args: &extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraAnnotations: map[string]string{
 							"department": "procurement",
 						},
 					},
 				},
 				service: &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp: "mariadb-mcp",
-						},
-						Annotations: map[string]string{
-							managedExtraAnnotations: "{\"department\":\"procurement\"}",
-						},
+					Labels: map[string]string{
+						LabelKeyApp: "mariadb-mcp",
+					},
+					Annotations: map[string]string{
+						managedExtraAnnotations: "{\"department\":\"procurement\"}",
 					},
 				},
 			},
@@ -1898,22 +1780,20 @@ func Test_serviceAnnotationsChanged(t *testing.T) {
 		{
 			name: "spec annotations changed from tracked annotations",
 			args: &extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraAnnotations: map[string]string{
 							"department": "engineering",
 						},
 					},
 				},
 				service: &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp: "mariadb-mcp",
-						},
-						Annotations: map[string]string{
-							managedExtraAnnotations: "{\"department\":\"procurement\"}",
-							"department":            "procurement",
-						},
+					Labels: map[string]string{
+						LabelKeyApp: "mariadb-mcp",
+					},
+					Annotations: map[string]string{
+						managedExtraAnnotations: "{\"department\":\"procurement\"}",
+						"department":            "procurement",
 					},
 				},
 			},
@@ -1922,18 +1802,16 @@ func Test_serviceAnnotationsChanged(t *testing.T) {
 		{
 			name: "all spec annotations removed but tracked annotations exist",
 			args: &extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{},
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{},
 				},
 				service: &corev1.Service{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp: "mariadb-mcp",
-						},
-						Annotations: map[string]string{
-							managedExtraAnnotations: "{\"department\":\"procurement\"}",
-							"department":            "procurement",
-						},
+					Labels: map[string]string{
+						LabelKeyApp: "mariadb-mcp",
+					},
+					Annotations: map[string]string{
+						managedExtraAnnotations: "{\"department\":\"procurement\"}",
+						"department":            "procurement",
 					},
 				},
 			},
@@ -1960,16 +1838,14 @@ func Test_networkPolicyLabelsChanged(t *testing.T) {
 		{
 			name: "no custom metadata provided",
 			args: &extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraLabels: map[string]string{},
 					},
 				},
 				networkPolicy: &networkingv1.NetworkPolicy{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp: "mariadb-mcp",
-						},
+					Labels: map[string]string{
+						LabelKeyApp: "mariadb-mcp",
 					},
 				},
 			},
@@ -1978,22 +1854,20 @@ func Test_networkPolicyLabelsChanged(t *testing.T) {
 		{
 			name: "custom metadata matches .spec.extraLabels",
 			args: &extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraLabels: map[string]string{
 							"department": "procurement",
 						},
 					},
 				},
 				networkPolicy: &networkingv1.NetworkPolicy{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp:  "mariadb-mcp",
-							"department": "procurement",
-						},
-						Annotations: map[string]string{
-							managedExtraLabels: "{\"department\":\"procurement\"}",
-						},
+					Labels: map[string]string{
+						LabelKeyApp:  "mariadb-mcp",
+						"department": "procurement",
+					},
+					Annotations: map[string]string{
+						managedExtraLabels: "{\"department\":\"procurement\"}",
 					},
 				},
 			},
@@ -2002,8 +1876,8 @@ func Test_networkPolicyLabelsChanged(t *testing.T) {
 		{
 			name: "networkpolicy missing custom labels defined in .spec.extraLabels",
 			args: &extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraLabels: map[string]string{
 							"department": "procurement",
 							"env":        "production",
@@ -2011,14 +1885,12 @@ func Test_networkPolicyLabelsChanged(t *testing.T) {
 					},
 				},
 				networkPolicy: &networkingv1.NetworkPolicy{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp:  "mariadb-mcp",
-							"department": "procurement",
-						},
-						Annotations: map[string]string{
-							managedExtraLabels: "{\"department\":\"procurement\",\"env\": \"production\"}",
-						},
+					Labels: map[string]string{
+						LabelKeyApp:  "mariadb-mcp",
+						"department": "procurement",
+					},
+					Annotations: map[string]string{
+						managedExtraLabels: "{\"department\":\"procurement\",\"env\": \"production\"}",
 					},
 				},
 			},
@@ -2027,17 +1899,15 @@ func Test_networkPolicyLabelsChanged(t *testing.T) {
 		{
 			name: "corrupted JSON in managed labels annotation forces update",
 			args: &extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{},
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{},
 				},
 				networkPolicy: &networkingv1.NetworkPolicy{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp: "mariadb-mcp",
-						},
-						Annotations: map[string]string{
-							managedExtraLabels: "not-valid-json",
-						},
+					Labels: map[string]string{
+						LabelKeyApp: "mariadb-mcp",
+					},
+					Annotations: map[string]string{
+						managedExtraLabels: "not-valid-json",
 					},
 				},
 			},
@@ -2046,21 +1916,19 @@ func Test_networkPolicyLabelsChanged(t *testing.T) {
 		{
 			name: "label tracked but missing from networkpolicy.Labels",
 			args: &extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraLabels: map[string]string{
 							"department": "procurement",
 						},
 					},
 				},
 				networkPolicy: &networkingv1.NetworkPolicy{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp: "mariadb-mcp",
-						},
-						Annotations: map[string]string{
-							managedExtraLabels: "{\"department\":\"procurement\"}",
-						},
+					Labels: map[string]string{
+						LabelKeyApp: "mariadb-mcp",
+					},
+					Annotations: map[string]string{
+						managedExtraLabels: "{\"department\":\"procurement\"}",
 					},
 				},
 			},
@@ -2069,22 +1937,20 @@ func Test_networkPolicyLabelsChanged(t *testing.T) {
 		{
 			name: "spec labels changed from tracked labels",
 			args: &extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraLabels: map[string]string{
 							"department": "engineering",
 						},
 					},
 				},
 				networkPolicy: &networkingv1.NetworkPolicy{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp:  "mariadb-mcp",
-							"department": "procurement",
-						},
-						Annotations: map[string]string{
-							managedExtraLabels: "{\"department\":\"procurement\"}",
-						},
+					Labels: map[string]string{
+						LabelKeyApp:  "mariadb-mcp",
+						"department": "procurement",
+					},
+					Annotations: map[string]string{
+						managedExtraLabels: "{\"department\":\"procurement\"}",
 					},
 				},
 			},
@@ -2093,18 +1959,16 @@ func Test_networkPolicyLabelsChanged(t *testing.T) {
 		{
 			name: "all spec labels removed but tracked labels exist",
 			args: &extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{},
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{},
 				},
 				networkPolicy: &networkingv1.NetworkPolicy{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp:  "mariadb-mcp",
-							"department": "procurement",
-						},
-						Annotations: map[string]string{
-							managedExtraLabels: "{\"department\":\"procurement\"}",
-						},
+					Labels: map[string]string{
+						LabelKeyApp:  "mariadb-mcp",
+						"department": "procurement",
+					},
+					Annotations: map[string]string{
+						managedExtraLabels: "{\"department\":\"procurement\"}",
 					},
 				},
 			},
@@ -2131,14 +1995,12 @@ func Test_networkPolicyAnnotationsChanged(t *testing.T) {
 		{
 			name: "no custom metadata provided",
 			args: &extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{},
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{},
 				},
 				networkPolicy: &networkingv1.NetworkPolicy{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp: "mariadb-mcp",
-						},
+					Labels: map[string]string{
+						LabelKeyApp: "mariadb-mcp",
 					},
 				},
 			},
@@ -2147,22 +2009,20 @@ func Test_networkPolicyAnnotationsChanged(t *testing.T) {
 		{
 			name: "custom metadata matches .spec.extraAnnotations",
 			args: &extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraAnnotations: map[string]string{
 							"department": "procurement",
 						},
 					},
 				},
 				networkPolicy: &networkingv1.NetworkPolicy{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp: "mariadb-mcp",
-						},
-						Annotations: map[string]string{
-							managedExtraAnnotations: "{\"department\":\"procurement\"}",
-							"department":            "procurement",
-						},
+					Labels: map[string]string{
+						LabelKeyApp: "mariadb-mcp",
+					},
+					Annotations: map[string]string{
+						managedExtraAnnotations: "{\"department\":\"procurement\"}",
+						"department":            "procurement",
 					},
 				},
 			},
@@ -2171,8 +2031,8 @@ func Test_networkPolicyAnnotationsChanged(t *testing.T) {
 		{
 			name: "networkpolicy missing custom annotations defined in .spec.extraAnnotations",
 			args: &extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraAnnotations: map[string]string{
 							"department": "procurement",
 							"env":        "production",
@@ -2180,14 +2040,12 @@ func Test_networkPolicyAnnotationsChanged(t *testing.T) {
 					},
 				},
 				networkPolicy: &networkingv1.NetworkPolicy{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp: "mariadb-mcp",
-						},
-						Annotations: map[string]string{
-							managedExtraAnnotations: "{\"department\":\"procurement\",\"env\": \"production\"}",
-							"department":            "procurement",
-						},
+					Labels: map[string]string{
+						LabelKeyApp: "mariadb-mcp",
+					},
+					Annotations: map[string]string{
+						managedExtraAnnotations: "{\"department\":\"procurement\",\"env\": \"production\"}",
+						"department":            "procurement",
 					},
 				},
 			},
@@ -2196,17 +2054,15 @@ func Test_networkPolicyAnnotationsChanged(t *testing.T) {
 		{
 			name: "corrupted JSON in managed annotations annotation forces update",
 			args: &extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{},
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{},
 				},
 				networkPolicy: &networkingv1.NetworkPolicy{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp: "mariadb-mcp",
-						},
-						Annotations: map[string]string{
-							managedExtraAnnotations: "not-valid-json",
-						},
+					Labels: map[string]string{
+						LabelKeyApp: "mariadb-mcp",
+					},
+					Annotations: map[string]string{
+						managedExtraAnnotations: "not-valid-json",
 					},
 				},
 			},
@@ -2215,21 +2071,19 @@ func Test_networkPolicyAnnotationsChanged(t *testing.T) {
 		{
 			name: "annotation tracked but missing from networkpolicy.Annotations",
 			args: &extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraAnnotations: map[string]string{
 							"department": "procurement",
 						},
 					},
 				},
 				networkPolicy: &networkingv1.NetworkPolicy{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp: "mariadb-mcp",
-						},
-						Annotations: map[string]string{
-							managedExtraAnnotations: "{\"department\":\"procurement\"}",
-						},
+					Labels: map[string]string{
+						LabelKeyApp: "mariadb-mcp",
+					},
+					Annotations: map[string]string{
+						managedExtraAnnotations: "{\"department\":\"procurement\"}",
 					},
 				},
 			},
@@ -2238,22 +2092,20 @@ func Test_networkPolicyAnnotationsChanged(t *testing.T) {
 		{
 			name: "spec annotations changed from tracked annotations",
 			args: &extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{
 						ExtraAnnotations: map[string]string{
 							"department": "engineering",
 						},
 					},
 				},
 				networkPolicy: &networkingv1.NetworkPolicy{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp: "mariadb-mcp",
-						},
-						Annotations: map[string]string{
-							managedExtraAnnotations: "{\"department\":\"procurement\"}",
-							"department":            "procurement",
-						},
+					Labels: map[string]string{
+						LabelKeyApp: "mariadb-mcp",
+					},
+					Annotations: map[string]string{
+						managedExtraAnnotations: "{\"department\":\"procurement\"}",
+						"department":            "procurement",
 					},
 				},
 			},
@@ -2262,18 +2114,16 @@ func Test_networkPolicyAnnotationsChanged(t *testing.T) {
 		{
 			name: "all spec annotations removed but tracked annotations exist",
 			args: &extraMetaArgs{
-				mcp: &mcpv1beta1.MCPServer{
-					Spec: mcpv1beta1.MCPServerSpec{},
+				mcp: &mcpv1.MCPServer{
+					Spec: mcpv1.MCPServerSpec{},
 				},
 				networkPolicy: &networkingv1.NetworkPolicy{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							LabelKeyApp: "mariadb-mcp",
-						},
-						Annotations: map[string]string{
-							managedExtraAnnotations: "{\"department\":\"procurement\"}",
-							"department":            "procurement",
-						},
+					Labels: map[string]string{
+						LabelKeyApp: "mariadb-mcp",
+					},
+					Annotations: map[string]string{
+						managedExtraAnnotations: "{\"department\":\"procurement\"}",
+						"department":            "procurement",
 					},
 				},
 			},
