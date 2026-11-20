@@ -27,14 +27,13 @@ import (
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	mcpv1beta1 "github.com/kubernetes-sigs/mcp-lifecycle-operator/api/v1beta1"
+	mcpv1 "github.com/kubernetes-sigs/mcp-lifecycle-operator/api/v1"
 )
 
 var _ = Describe("MCPServer Metrics", func() {
@@ -47,7 +46,7 @@ var _ = Describe("MCPServer Metrics", func() {
 	}
 
 	AfterEach(func() {
-		resource := &mcpv1beta1.MCPServer{}
+		resource := &mcpv1.MCPServer{}
 		err := k8sClient.Get(ctx, typeNamespacedName, resource)
 		if err == nil {
 			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
@@ -64,19 +63,17 @@ var _ = Describe("MCPServer Metrics", func() {
 	})
 
 	It("should record Accepted and Ready condition metrics on successful reconcile", func() {
-		resource := &mcpv1beta1.MCPServer{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      resourceName,
-				Namespace: namespace,
-			},
-			Spec: mcpv1beta1.MCPServerSpec{
-				Source: mcpv1beta1.Source{
-					Type: mcpv1beta1.SourceTypeContainerImage,
-					ContainerImage: &mcpv1beta1.ContainerImageSource{
+		resource := &mcpv1.MCPServer{
+			Name:      resourceName,
+			Namespace: namespace,
+			Spec: mcpv1.MCPServerSpec{
+				Source: mcpv1.Source{
+					Type: mcpv1.SourceTypeContainerImage,
+					ContainerImage: &mcpv1.ContainerImageSource{
 						Ref: "docker.io/library/test-image:latest",
 					},
 				},
-				Config: mcpv1beta1.ServerConfig{Port: 8080},
+				Config: mcpv1.ServerConfig{Port: 8080},
 			},
 		}
 		Expect(k8sClient.Create(ctx, resource)).To(Succeed())
@@ -96,29 +93,25 @@ var _ = Describe("MCPServer Metrics", func() {
 	})
 
 	It("should record validation failure metrics when config is invalid", func() {
-		resource := &mcpv1beta1.MCPServer{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      resourceName,
-				Namespace: namespace,
-			},
-			Spec: mcpv1beta1.MCPServerSpec{
-				Source: mcpv1beta1.Source{
-					Type: mcpv1beta1.SourceTypeContainerImage,
-					ContainerImage: &mcpv1beta1.ContainerImageSource{
+		resource := &mcpv1.MCPServer{
+			Name:      resourceName,
+			Namespace: namespace,
+			Spec: mcpv1.MCPServerSpec{
+				Source: mcpv1.Source{
+					Type: mcpv1.SourceTypeContainerImage,
+					ContainerImage: &mcpv1.ContainerImageSource{
 						Ref: "docker.io/library/test-image:latest",
 					},
 				},
-				Config: mcpv1beta1.ServerConfig{
+				Config: mcpv1.ServerConfig{
 					Port: 8080,
-					Storage: []mcpv1beta1.StorageMount{
+					Storage: []mcpv1.StorageMount{
 						{
 							Path: "/config",
-							Source: mcpv1beta1.StorageSource{
-								Type: mcpv1beta1.StorageTypeConfigMap,
+							Source: mcpv1.StorageSource{
+								Type: mcpv1.StorageTypeConfigMap,
 								ConfigMap: &corev1.ConfigMapVolumeSource{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "nonexistent-configmap",
-									},
+									Name: "nonexistent-configmap",
 								},
 							},
 						},
@@ -147,19 +140,17 @@ var _ = Describe("MCPServer Metrics", func() {
 	})
 
 	It("should record reconcile phase durations", func() {
-		resource := &mcpv1beta1.MCPServer{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      resourceName,
-				Namespace: namespace,
-			},
-			Spec: mcpv1beta1.MCPServerSpec{
-				Source: mcpv1beta1.Source{
-					Type: mcpv1beta1.SourceTypeContainerImage,
-					ContainerImage: &mcpv1beta1.ContainerImageSource{
+		resource := &mcpv1.MCPServer{
+			Name:      resourceName,
+			Namespace: namespace,
+			Spec: mcpv1.MCPServerSpec{
+				Source: mcpv1.Source{
+					Type: mcpv1.SourceTypeContainerImage,
+					ContainerImage: &mcpv1.ContainerImageSource{
 						Ref: "docker.io/library/test-image:latest",
 					},
 				},
-				Config: mcpv1beta1.ServerConfig{Port: 8080},
+				Config: mcpv1.ServerConfig{Port: 8080},
 			},
 		}
 		Expect(k8sClient.Create(ctx, resource)).To(Succeed())
@@ -174,29 +165,25 @@ var _ = Describe("MCPServer Metrics", func() {
 	})
 
 	It("should cleanup metrics when MCPServer is deleted", func() {
-		resource := &mcpv1beta1.MCPServer{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      resourceName,
-				Namespace: namespace,
-			},
-			Spec: mcpv1beta1.MCPServerSpec{
-				Source: mcpv1beta1.Source{
-					Type: mcpv1beta1.SourceTypeContainerImage,
-					ContainerImage: &mcpv1beta1.ContainerImageSource{
+		resource := &mcpv1.MCPServer{
+			Name:      resourceName,
+			Namespace: namespace,
+			Spec: mcpv1.MCPServerSpec{
+				Source: mcpv1.Source{
+					Type: mcpv1.SourceTypeContainerImage,
+					ContainerImage: &mcpv1.ContainerImageSource{
 						Ref: "docker.io/library/test-image:latest",
 					},
 				},
-				Config: mcpv1beta1.ServerConfig{
+				Config: mcpv1.ServerConfig{
 					Port: 8080,
-					Storage: []mcpv1beta1.StorageMount{
+					Storage: []mcpv1.StorageMount{
 						{
 							Path: "/config",
-							Source: mcpv1beta1.StorageSource{
-								Type: mcpv1beta1.StorageTypeConfigMap,
+							Source: mcpv1.StorageSource{
+								Type: mcpv1.StorageTypeConfigMap,
 								ConfigMap: &corev1.ConfigMapVolumeSource{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "nonexistent-configmap",
-									},
+									Name: "nonexistent-configmap",
 								},
 							},
 						},
@@ -225,19 +212,17 @@ var _ = Describe("MCPServer Metrics", func() {
 	It("should record deployment failure metrics and Ready condition when deployment reconciliation fails", func() {
 		depFailName := "metrics-dep-fail"
 		depFailNN := types.NamespacedName{Name: depFailName, Namespace: namespace}
-		resource := &mcpv1beta1.MCPServer{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      depFailName,
-				Namespace: namespace,
-			},
-			Spec: mcpv1beta1.MCPServerSpec{
-				Source: mcpv1beta1.Source{
-					Type: mcpv1beta1.SourceTypeContainerImage,
-					ContainerImage: &mcpv1beta1.ContainerImageSource{
+		resource := &mcpv1.MCPServer{
+			Name:      depFailName,
+			Namespace: namespace,
+			Spec: mcpv1.MCPServerSpec{
+				Source: mcpv1.Source{
+					Type: mcpv1.SourceTypeContainerImage,
+					ContainerImage: &mcpv1.ContainerImageSource{
 						Ref: "docker.io/library/test-image:latest",
 					},
 				},
-				Config: mcpv1beta1.ServerConfig{Port: 8080},
+				Config: mcpv1.ServerConfig{Port: 8080},
 			},
 		}
 		Expect(k8sClient.Create(ctx, resource)).To(Succeed())
@@ -274,19 +259,17 @@ var _ = Describe("MCPServer Metrics", func() {
 	It("should record service failure metrics and Ready condition when service reconciliation fails", func() {
 		svcFailName := "metrics-svc-fail"
 		svcFailNN := types.NamespacedName{Name: svcFailName, Namespace: namespace}
-		resource := &mcpv1beta1.MCPServer{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      svcFailName,
-				Namespace: namespace,
-			},
-			Spec: mcpv1beta1.MCPServerSpec{
-				Source: mcpv1beta1.Source{
-					Type: mcpv1beta1.SourceTypeContainerImage,
-					ContainerImage: &mcpv1beta1.ContainerImageSource{
+		resource := &mcpv1.MCPServer{
+			Name:      svcFailName,
+			Namespace: namespace,
+			Spec: mcpv1.MCPServerSpec{
+				Source: mcpv1.Source{
+					Type: mcpv1.SourceTypeContainerImage,
+					ContainerImage: &mcpv1.ContainerImageSource{
 						Ref: "docker.io/library/test-image:latest",
 					},
 				},
-				Config: mcpv1beta1.ServerConfig{Port: 8080},
+				Config: mcpv1.ServerConfig{Port: 8080},
 			},
 		}
 		Expect(k8sClient.Create(ctx, resource)).To(Succeed())
@@ -323,19 +306,17 @@ var _ = Describe("MCPServer Metrics", func() {
 	It("should record handshake success metrics when handshake succeeds", func() {
 		hsSuccessName := "metrics-hs-ok"
 		hsSuccessNN := types.NamespacedName{Name: hsSuccessName, Namespace: namespace}
-		resource := &mcpv1beta1.MCPServer{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      hsSuccessName,
-				Namespace: namespace,
-			},
-			Spec: mcpv1beta1.MCPServerSpec{
-				Source: mcpv1beta1.Source{
-					Type: mcpv1beta1.SourceTypeContainerImage,
-					ContainerImage: &mcpv1beta1.ContainerImageSource{
+		resource := &mcpv1.MCPServer{
+			Name:      hsSuccessName,
+			Namespace: namespace,
+			Spec: mcpv1.MCPServerSpec{
+				Source: mcpv1.Source{
+					Type: mcpv1.SourceTypeContainerImage,
+					ContainerImage: &mcpv1.ContainerImageSource{
 						Ref: "docker.io/library/test-image:latest",
 					},
 				},
-				Config: mcpv1beta1.ServerConfig{Port: 8080},
+				Config: mcpv1.ServerConfig{Port: 8080},
 			},
 		}
 		Expect(k8sClient.Create(ctx, resource)).To(Succeed())
@@ -345,8 +326,8 @@ var _ = Describe("MCPServer Metrics", func() {
 			Client:    k8sClient,
 			Scheme:    k8sClient.Scheme(),
 			APIReader: k8sClient,
-			MCPDialer: func(_ context.Context, _ string, _ *http.Transport) (*mcpv1beta1.MCPServerInfo, error) {
-				return &mcpv1beta1.MCPServerInfo{Name: "test-server", Version: "1.0"}, nil
+			MCPDialer: func(_ context.Context, _ string, _ *http.Transport) (*mcpv1.MCPServerInfo, error) {
+				return &mcpv1.MCPServerInfo{Name: "test-server", Version: "1.0"}, nil
 			},
 		}
 		// First reconcile creates the Deployment
@@ -368,19 +349,17 @@ var _ = Describe("MCPServer Metrics", func() {
 	It("should record handshake failure metrics when handshake fails", func() {
 		hsFailName := "metrics-hs-fail"
 		hsFailNN := types.NamespacedName{Name: hsFailName, Namespace: namespace}
-		resource := &mcpv1beta1.MCPServer{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      hsFailName,
-				Namespace: namespace,
-			},
-			Spec: mcpv1beta1.MCPServerSpec{
-				Source: mcpv1beta1.Source{
-					Type: mcpv1beta1.SourceTypeContainerImage,
-					ContainerImage: &mcpv1beta1.ContainerImageSource{
+		resource := &mcpv1.MCPServer{
+			Name:      hsFailName,
+			Namespace: namespace,
+			Spec: mcpv1.MCPServerSpec{
+				Source: mcpv1.Source{
+					Type: mcpv1.SourceTypeContainerImage,
+					ContainerImage: &mcpv1.ContainerImageSource{
 						Ref: "docker.io/library/test-image:latest",
 					},
 				},
-				Config: mcpv1beta1.ServerConfig{Port: 8080},
+				Config: mcpv1.ServerConfig{Port: 8080},
 			},
 		}
 		Expect(k8sClient.Create(ctx, resource)).To(Succeed())
@@ -390,7 +369,7 @@ var _ = Describe("MCPServer Metrics", func() {
 			Client:    k8sClient,
 			Scheme:    k8sClient.Scheme(),
 			APIReader: k8sClient,
-			MCPDialer: func(_ context.Context, _ string, _ *http.Transport) (*mcpv1beta1.MCPServerInfo, error) {
+			MCPDialer: func(_ context.Context, _ string, _ *http.Transport) (*mcpv1.MCPServerInfo, error) {
 				return nil, fmt.Errorf("connection refused")
 			},
 		}
@@ -413,19 +392,17 @@ var _ = Describe("MCPServer Metrics", func() {
 	It("should record auth_skip metrics when handshake returns HTTP auth error", func() {
 		hsAuthName := "metrics-hs-auth"
 		hsAuthNN := types.NamespacedName{Name: hsAuthName, Namespace: namespace}
-		resource := &mcpv1beta1.MCPServer{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      hsAuthName,
-				Namespace: namespace,
-			},
-			Spec: mcpv1beta1.MCPServerSpec{
-				Source: mcpv1beta1.Source{
-					Type: mcpv1beta1.SourceTypeContainerImage,
-					ContainerImage: &mcpv1beta1.ContainerImageSource{
+		resource := &mcpv1.MCPServer{
+			Name:      hsAuthName,
+			Namespace: namespace,
+			Spec: mcpv1.MCPServerSpec{
+				Source: mcpv1.Source{
+					Type: mcpv1.SourceTypeContainerImage,
+					ContainerImage: &mcpv1.ContainerImageSource{
 						Ref: "docker.io/library/test-image:latest",
 					},
 				},
-				Config: mcpv1beta1.ServerConfig{Port: 8080},
+				Config: mcpv1.ServerConfig{Port: 8080},
 			},
 		}
 		Expect(k8sClient.Create(ctx, resource)).To(Succeed())
@@ -435,7 +412,7 @@ var _ = Describe("MCPServer Metrics", func() {
 			Client:    k8sClient,
 			Scheme:    k8sClient.Scheme(),
 			APIReader: k8sClient,
-			MCPDialer: func(_ context.Context, _ string, _ *http.Transport) (*mcpv1beta1.MCPServerInfo, error) {
+			MCPDialer: func(_ context.Context, _ string, _ *http.Transport) (*mcpv1.MCPServerInfo, error) {
 				return nil, fmt.Errorf("POST http://localhost:8080/mcp: Unauthorized")
 			},
 		}
@@ -456,26 +433,24 @@ var _ = Describe("MCPServer Metrics", func() {
 	It("should increment capabilityChangesTotal when capabilities change between reconciles", func() {
 		capChangeName := "metrics-cap-change"
 		capChangeNN := types.NamespacedName{Name: capChangeName, Namespace: namespace}
-		resource := &mcpv1beta1.MCPServer{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      capChangeName,
-				Namespace: namespace,
-			},
-			Spec: mcpv1beta1.MCPServerSpec{
-				Source: mcpv1beta1.Source{
-					Type: mcpv1beta1.SourceTypeContainerImage,
-					ContainerImage: &mcpv1beta1.ContainerImageSource{
+		resource := &mcpv1.MCPServer{
+			Name:      capChangeName,
+			Namespace: namespace,
+			Spec: mcpv1.MCPServerSpec{
+				Source: mcpv1.Source{
+					Type: mcpv1.SourceTypeContainerImage,
+					ContainerImage: &mcpv1.ContainerImageSource{
 						Ref: "docker.io/library/test-image:latest",
 					},
 				},
-				Config: mcpv1beta1.ServerConfig{Port: 8080},
+				Config: mcpv1.ServerConfig{Port: 8080},
 			},
 		}
 		Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 		defer func() { _ = k8sClient.Delete(ctx, resource) }()
 
-		firstCaps := &mcpv1beta1.MCPServerCapabilities{Tools: true, Resources: false}
-		secondCaps := &mcpv1beta1.MCPServerCapabilities{Tools: true, Resources: true}
+		firstCaps := &mcpv1.MCPServerCapabilities{Tools: true, Resources: false}
+		secondCaps := &mcpv1.MCPServerCapabilities{Tools: true, Resources: true}
 
 		currentCaps := firstCaps
 		reconciler := &MCPServerReconciler{
@@ -483,8 +458,8 @@ var _ = Describe("MCPServer Metrics", func() {
 			Scheme:    k8sClient.Scheme(),
 			APIReader: k8sClient,
 			Recorder:  events.NewFakeRecorder(testRecorderBuffer),
-			MCPDialer: func(_ context.Context, _ string, _ *http.Transport) (*mcpv1beta1.MCPServerInfo, error) {
-				return &mcpv1beta1.MCPServerInfo{
+			MCPDialer: func(_ context.Context, _ string, _ *http.Transport) (*mcpv1.MCPServerInfo, error) {
+				return &mcpv1.MCPServerInfo{
 					Name:         "cap-server",
 					Version:      "1.0",
 					Capabilities: currentCaps.DeepCopy(),
@@ -506,7 +481,7 @@ var _ = Describe("MCPServer Metrics", func() {
 		currentCaps = secondCaps
 
 		// Bump generation by changing a spec field so the handshake re-runs
-		mcpServer := &mcpv1beta1.MCPServer{}
+		mcpServer := &mcpv1.MCPServer{}
 		Expect(k8sClient.Get(ctx, capChangeNN, mcpServer)).To(Succeed())
 		mcpServer.Spec.Config.Path = "/mcp-v2"
 		Expect(k8sClient.Update(ctx, mcpServer)).To(Succeed())
@@ -534,19 +509,17 @@ var _ = Describe("MCPServer Metrics", func() {
 	It("should record skip metrics when handshake was already verified", func() {
 		hsSkipName := "metrics-hs-skip"
 		hsSkipNN := types.NamespacedName{Name: hsSkipName, Namespace: namespace}
-		resource := &mcpv1beta1.MCPServer{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      hsSkipName,
-				Namespace: namespace,
-			},
-			Spec: mcpv1beta1.MCPServerSpec{
-				Source: mcpv1beta1.Source{
-					Type: mcpv1beta1.SourceTypeContainerImage,
-					ContainerImage: &mcpv1beta1.ContainerImageSource{
+		resource := &mcpv1.MCPServer{
+			Name:      hsSkipName,
+			Namespace: namespace,
+			Spec: mcpv1.MCPServerSpec{
+				Source: mcpv1.Source{
+					Type: mcpv1.SourceTypeContainerImage,
+					ContainerImage: &mcpv1.ContainerImageSource{
 						Ref: "docker.io/library/test-image:latest",
 					},
 				},
-				Config: mcpv1beta1.ServerConfig{Port: 8080},
+				Config: mcpv1.ServerConfig{Port: 8080},
 			},
 		}
 		Expect(k8sClient.Create(ctx, resource)).To(Succeed())
@@ -556,8 +529,8 @@ var _ = Describe("MCPServer Metrics", func() {
 			Client:    k8sClient,
 			Scheme:    k8sClient.Scheme(),
 			APIReader: k8sClient,
-			MCPDialer: func(_ context.Context, _ string, _ *http.Transport) (*mcpv1beta1.MCPServerInfo, error) {
-				return &mcpv1beta1.MCPServerInfo{Name: "test-server", Version: "1.0"}, nil
+			MCPDialer: func(_ context.Context, _ string, _ *http.Transport) (*mcpv1.MCPServerInfo, error) {
+				return &mcpv1.MCPServerInfo{Name: "test-server", Version: "1.0"}, nil
 			},
 		}
 		_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: hsSkipNN})
@@ -583,25 +556,23 @@ var _ = Describe("MCPServer Metrics", func() {
 	It("should detect capability change when capabilities go from non-nil to nil", func() {
 		capNilName := "metrics-cap-nil"
 		capNilNN := types.NamespacedName{Name: capNilName, Namespace: namespace}
-		resource := &mcpv1beta1.MCPServer{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      capNilName,
-				Namespace: namespace,
-			},
-			Spec: mcpv1beta1.MCPServerSpec{
-				Source: mcpv1beta1.Source{
-					Type: mcpv1beta1.SourceTypeContainerImage,
-					ContainerImage: &mcpv1beta1.ContainerImageSource{
+		resource := &mcpv1.MCPServer{
+			Name:      capNilName,
+			Namespace: namespace,
+			Spec: mcpv1.MCPServerSpec{
+				Source: mcpv1.Source{
+					Type: mcpv1.SourceTypeContainerImage,
+					ContainerImage: &mcpv1.ContainerImageSource{
 						Ref: "docker.io/library/test-image:latest",
 					},
 				},
-				Config: mcpv1beta1.ServerConfig{Port: 8080},
+				Config: mcpv1.ServerConfig{Port: 8080},
 			},
 		}
 		Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 		defer func() { _ = k8sClient.Delete(ctx, resource) }()
 
-		firstCaps := &mcpv1beta1.MCPServerCapabilities{Tools: true, Resources: true}
+		firstCaps := &mcpv1.MCPServerCapabilities{Tools: true, Resources: true}
 		returnCaps := firstCaps
 		fr := events.NewFakeRecorder(testRecorderBuffer)
 		reconciler := &MCPServerReconciler{
@@ -609,8 +580,8 @@ var _ = Describe("MCPServer Metrics", func() {
 			Scheme:    k8sClient.Scheme(),
 			APIReader: k8sClient,
 			Recorder:  fr,
-			MCPDialer: func(_ context.Context, _ string, _ *http.Transport) (*mcpv1beta1.MCPServerInfo, error) {
-				info := &mcpv1beta1.MCPServerInfo{
+			MCPDialer: func(_ context.Context, _ string, _ *http.Transport) (*mcpv1.MCPServerInfo, error) {
+				info := &mcpv1.MCPServerInfo{
 					Name:    "cap-nil-server",
 					Version: "1.0",
 				}
@@ -635,7 +606,7 @@ var _ = Describe("MCPServer Metrics", func() {
 		returnCaps = nil
 
 		// Bump generation so the handshake re-runs
-		mcpServer := &mcpv1beta1.MCPServer{}
+		mcpServer := &mcpv1.MCPServer{}
 		Expect(k8sClient.Get(ctx, capNilNN, mcpServer)).To(Succeed())
 		mcpServer.Spec.Config.Path = "/mcp-v2"
 		Expect(k8sClient.Update(ctx, mcpServer)).To(Succeed())

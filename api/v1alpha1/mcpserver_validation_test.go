@@ -28,7 +28,6 @@ import (
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -60,9 +59,24 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 
 	By("bootstrapping test environment")
+	// Exercise the retained alpha schema in isolation, even though production
+	// clusters no longer serve this version.
+	crds := envtest.CRDInstallOptions{
+		Paths:              []string{filepath.Join("..", "..", "config", "crd", "bases")},
+		ErrorIfPathMissing: true,
+	}
+	Expect(envtest.ReadCRDFiles(&crds)).To(Succeed())
+	for _, crd := range crds.CRDs {
+		if crd.Name == "mcpservers.mcp.x-k8s.io" {
+			for i := range crd.Spec.Versions {
+				if crd.Spec.Versions[i].Name == "v1alpha1" {
+					crd.Spec.Versions[i].Served = true
+				}
+			}
+		}
+	}
 	testEnv = &envtest.Environment{
-		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "config", "crd", "bases")},
-		ErrorIfCRDPathMissing: true,
+		CRDs: crds.CRDs,
 	}
 
 	// Retrieve the first found binary directory to allow running tests from IDEs
@@ -111,9 +125,7 @@ var _ = Describe("MCPServer Validation", func() {
 	BeforeEach(func() {
 		// Create a unique namespace for each test
 		namespace = &corev1.Namespace{
-			ObjectMeta: metav1.ObjectMeta{
-				GenerateName: "test-validation-",
-			},
+			GenerateName: "test-validation-",
 		}
 		Expect(k8sClient.Create(ctx, namespace)).To(Succeed())
 	})
@@ -128,10 +140,8 @@ var _ = Describe("MCPServer Validation", func() {
 	Context("Source validation", func() {
 		It("should accept valid Source with type=ContainerImage and containerImage set", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "valid-source",
-					Namespace: namespace.Name,
-				},
+				Name:      "valid-source",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -149,10 +159,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should reject Source with type=ContainerImage but no containerImage", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "invalid-source-missing-image",
-					Namespace: namespace.Name,
-				},
+				Name:      "invalid-source-missing-image",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type:           SourceTypeContainerImage,
@@ -173,10 +181,8 @@ var _ = Describe("MCPServer Validation", func() {
 	Context("StorageMount validation", func() {
 		It("should accept valid StorageMount with type=ConfigMap and configMap set", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "valid-configmap-storage",
-					Namespace: namespace.Name,
-				},
+				Name:      "valid-configmap-storage",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -192,9 +198,7 @@ var _ = Describe("MCPServer Validation", func() {
 								Source: StorageSource{
 									Type: StorageTypeConfigMap,
 									ConfigMap: &corev1.ConfigMapVolumeSource{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "test-config",
-										},
+										Name: "test-config",
 									},
 								},
 							},
@@ -207,10 +211,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should accept valid StorageMount with type=Secret and secret set", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "valid-secret-storage",
-					Namespace: namespace.Name,
-				},
+				Name:      "valid-secret-storage",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -239,10 +241,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should reject StorageMount with both configMap and secret set", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "invalid-both-sources",
-					Namespace: namespace.Name,
-				},
+				Name:      "invalid-both-sources",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -258,9 +258,7 @@ var _ = Describe("MCPServer Validation", func() {
 								Source: StorageSource{
 									Type: StorageTypeConfigMap,
 									ConfigMap: &corev1.ConfigMapVolumeSource{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "test-config",
-										},
+										Name: "test-config",
 									},
 									Secret: &corev1.SecretVolumeSource{
 										SecretName: "test-secret",
@@ -280,10 +278,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should reject StorageMount with type=ConfigMap but secret set instead", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "invalid-type-mismatch-configmap",
-					Namespace: namespace.Name,
-				},
+				Name:      "invalid-type-mismatch-configmap",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -315,10 +311,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should reject StorageMount with type=Secret but configMap set instead", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "invalid-type-mismatch-secret",
-					Namespace: namespace.Name,
-				},
+				Name:      "invalid-type-mismatch-secret",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -334,9 +328,7 @@ var _ = Describe("MCPServer Validation", func() {
 								Source: StorageSource{
 									Type: StorageTypeSecret, // Type says Secret
 									ConfigMap: &corev1.ConfigMapVolumeSource{ // But ConfigMap is set
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "test-config",
-										},
+										Name: "test-config",
 									},
 								},
 							},
@@ -352,10 +344,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should reject StorageMount with type=ConfigMap but neither field set", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "invalid-no-source",
-					Namespace: namespace.Name,
-				},
+				Name:      "invalid-no-source",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -386,10 +376,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should reject StorageMount with relative path", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "invalid-relative-path",
-					Namespace: namespace.Name,
-				},
+				Name:      "invalid-relative-path",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -405,9 +393,7 @@ var _ = Describe("MCPServer Validation", func() {
 								Source: StorageSource{
 									Type: StorageTypeConfigMap,
 									ConfigMap: &corev1.ConfigMapVolumeSource{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "test-config",
-										},
+										Name: "test-config",
 									},
 								},
 							},
@@ -426,10 +412,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should accept StorageMount with valid absolute path", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "valid-absolute-path",
-					Namespace: namespace.Name,
-				},
+				Name:      "valid-absolute-path",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -445,9 +429,7 @@ var _ = Describe("MCPServer Validation", func() {
 								Source: StorageSource{
 									Type: StorageTypeConfigMap,
 									ConfigMap: &corev1.ConfigMapVolumeSource{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "test-config",
-										},
+										Name: "test-config",
 									},
 								},
 							},
@@ -460,10 +442,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should accept StorageMount with permissions=ReadOnly", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "valid-permissions-readonly",
-					Namespace: namespace.Name,
-				},
+				Name:      "valid-permissions-readonly",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -480,9 +460,7 @@ var _ = Describe("MCPServer Validation", func() {
 								Source: StorageSource{
 									Type: StorageTypeConfigMap,
 									ConfigMap: &corev1.ConfigMapVolumeSource{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "test-config",
-										},
+										Name: "test-config",
 									},
 								},
 							},
@@ -495,10 +473,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should accept StorageMount with permissions=ReadWrite", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "valid-permissions-readwrite",
-					Namespace: namespace.Name,
-				},
+				Name:      "valid-permissions-readwrite",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -515,9 +491,7 @@ var _ = Describe("MCPServer Validation", func() {
 								Source: StorageSource{
 									Type: StorageTypeConfigMap,
 									ConfigMap: &corev1.ConfigMapVolumeSource{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "test-config",
-										},
+										Name: "test-config",
 									},
 								},
 							},
@@ -530,10 +504,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should accept StorageMount with permissions=RecursiveReadOnly", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "valid-permissions-recursivereadonly",
-					Namespace: namespace.Name,
-				},
+				Name:      "valid-permissions-recursivereadonly",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -550,9 +522,7 @@ var _ = Describe("MCPServer Validation", func() {
 								Source: StorageSource{
 									Type: StorageTypeConfigMap,
 									ConfigMap: &corev1.ConfigMapVolumeSource{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "test-config",
-										},
+										Name: "test-config",
 									},
 								},
 							},
@@ -565,10 +535,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should use default permissions (ReadOnly) when not specified", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "valid-permissions-default",
-					Namespace: namespace.Name,
-				},
+				Name:      "valid-permissions-default",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -585,9 +553,7 @@ var _ = Describe("MCPServer Validation", func() {
 								Source: StorageSource{
 									Type: StorageTypeConfigMap,
 									ConfigMap: &corev1.ConfigMapVolumeSource{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "test-config",
-										},
+										Name: "test-config",
 									},
 								},
 							},
@@ -600,10 +566,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should reject invalid permissions value", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "invalid-permissions",
-					Namespace: namespace.Name,
-				},
+				Name:      "invalid-permissions",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -620,9 +584,7 @@ var _ = Describe("MCPServer Validation", func() {
 								Source: StorageSource{
 									Type: StorageTypeConfigMap,
 									ConfigMap: &corev1.ConfigMapVolumeSource{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "test-config",
-										},
+										Name: "test-config",
 									},
 								},
 							},
@@ -638,10 +600,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should accept path with special characters", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "valid-path-special-chars",
-					Namespace: namespace.Name,
-				},
+				Name:      "valid-path-special-chars",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -657,9 +617,7 @@ var _ = Describe("MCPServer Validation", func() {
 								Source: StorageSource{
 									Type: StorageTypeConfigMap,
 									ConfigMap: &corev1.ConfigMapVolumeSource{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "test-config",
-										},
+										Name: "test-config",
 									},
 								},
 							},
@@ -672,10 +630,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should reject path not starting with /", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "invalid-path-not-absolute",
-					Namespace: namespace.Name,
-				},
+				Name:      "invalid-path-not-absolute",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -691,9 +647,7 @@ var _ = Describe("MCPServer Validation", func() {
 								Source: StorageSource{
 									Type: StorageTypeConfigMap,
 									ConfigMap: &corev1.ConfigMapVolumeSource{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "test-config",
-										},
+										Name: "test-config",
 									},
 								},
 							},
@@ -713,10 +667,8 @@ var _ = Describe("MCPServer Validation", func() {
 				longPath = longPath[:i+1] + "a" + longPath[i+2:]
 			}
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "invalid-path-too-long",
-					Namespace: namespace.Name,
-				},
+				Name:      "invalid-path-too-long",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -732,9 +684,7 @@ var _ = Describe("MCPServer Validation", func() {
 								Source: StorageSource{
 									Type: StorageTypeConfigMap,
 									ConfigMap: &corev1.ConfigMapVolumeSource{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "test-config",
-										},
+										Name: "test-config",
 									},
 								},
 							},
@@ -750,10 +700,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should reject path containing colon", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "invalid-path-colon",
-					Namespace: namespace.Name,
-				},
+				Name:      "invalid-path-colon",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -769,9 +717,7 @@ var _ = Describe("MCPServer Validation", func() {
 								Source: StorageSource{
 									Type: StorageTypeConfigMap,
 									ConfigMap: &corev1.ConfigMapVolumeSource{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "test-config",
-										},
+										Name: "test-config",
 									},
 								},
 							},
@@ -789,10 +735,8 @@ var _ = Describe("MCPServer Validation", func() {
 	Context("ServerConfig validation", func() {
 		It("should reject Port below minimum (0)", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "invalid-port-low",
-					Namespace: namespace.Name,
-				},
+				Name:      "invalid-port-low",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -813,10 +757,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should reject Port above maximum (65536)", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "invalid-port-high",
-					Namespace: namespace.Name,
-				},
+				Name:      "invalid-port-high",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -837,10 +779,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should accept valid Port range (1-65535)", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "valid-port",
-					Namespace: namespace.Name,
-				},
+				Name:      "valid-port",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -860,10 +800,8 @@ var _ = Describe("MCPServer Validation", func() {
 	Context("ContainerImageSource validation", func() {
 		It("should reject empty Ref", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "invalid-empty-ref",
-					Namespace: namespace.Name,
-				},
+				Name:      "invalid-empty-ref",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -887,10 +825,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should reject an invalid image pull policy", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "invalid-pull-policy",
-					Namespace: namespace.Name,
-				},
+				Name:      "invalid-pull-policy",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -912,10 +848,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should reject image pull secrets with an empty name", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "invalid-image-pull-secret",
-					Namespace: namespace.Name,
-				},
+				Name:      "invalid-image-pull-secret",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -941,10 +875,8 @@ var _ = Describe("MCPServer Validation", func() {
 	Context("Multiple storage mounts", func() {
 		It("should accept multiple valid storage mounts", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "multiple-storage",
-					Namespace: namespace.Name,
-				},
+				Name:      "multiple-storage",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -960,9 +892,7 @@ var _ = Describe("MCPServer Validation", func() {
 								Source: StorageSource{
 									Type: StorageTypeConfigMap,
 									ConfigMap: &corev1.ConfigMapVolumeSource{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "test-config",
-										},
+										Name: "test-config",
 									},
 								},
 							},
@@ -984,10 +914,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should reject multiple storage mounts with duplicate paths", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "duplicate-storage-path",
-					Namespace: namespace.Name,
-				},
+				Name:      "duplicate-storage-path",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -1003,9 +931,7 @@ var _ = Describe("MCPServer Validation", func() {
 								Source: StorageSource{
 									Type: StorageTypeConfigMap,
 									ConfigMap: &corev1.ConfigMapVolumeSource{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "config-one",
-										},
+										Name: "config-one",
 									},
 								},
 							},
@@ -1014,9 +940,7 @@ var _ = Describe("MCPServer Validation", func() {
 								Source: StorageSource{
 									Type: StorageTypeConfigMap,
 									ConfigMap: &corev1.ConfigMapVolumeSource{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "config-two",
-										},
+										Name: "config-two",
 									},
 								},
 							},
@@ -1031,10 +955,8 @@ var _ = Describe("MCPServer Validation", func() {
 	Context("RuntimeConfig validation", func() {
 		It("should accept omitted RuntimeConfig (defaults will be applied)", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "valid-omitted-runtime",
-					Namespace: namespace.Name,
-				},
+				Name:      "valid-omitted-runtime",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -1055,10 +977,8 @@ var _ = Describe("MCPServer Validation", func() {
 		It("should accept RuntimeConfig with replicas set", func() {
 			replicas := int32(2)
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "valid-runtime-replicas",
-					Namespace: namespace.Name,
-				},
+				Name:      "valid-runtime-replicas",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -1080,10 +1000,8 @@ var _ = Describe("MCPServer Validation", func() {
 		It("should accept RuntimeConfig with replicas set to 0 for scale-to-zero", func() {
 			replicas := int32(0)
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "valid-runtime-replicas-zero",
-					Namespace: namespace.Name,
-				},
+				Name:      "valid-runtime-replicas-zero",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -1104,10 +1022,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should accept RuntimeConfig with security set", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "valid-runtime-security",
-					Namespace: namespace.Name,
-				},
+				Name:      "valid-runtime-security",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -1130,10 +1046,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should accept MCPServer without runtime field (omitted)", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "valid-no-runtime",
-					Namespace: namespace.Name,
-				},
+				Name:      "valid-no-runtime",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -1154,10 +1068,8 @@ var _ = Describe("MCPServer Validation", func() {
 	Context("SecurityConfig validation", func() {
 		It("should accept empty SecurityConfig (security: {})", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "valid-empty-security",
-					Namespace: namespace.Name,
-				},
+				Name:      "valid-empty-security",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -1178,10 +1090,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should accept SecurityConfig with serviceAccountName set", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "valid-security-sa",
-					Namespace: namespace.Name,
-				},
+				Name:      "valid-security-sa",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -1205,10 +1115,8 @@ var _ = Describe("MCPServer Validation", func() {
 		It("should accept SecurityConfig with podSecurityContext set", func() {
 			runAsNonRoot := true
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "valid-security-pod-ctx",
-					Namespace: namespace.Name,
-				},
+				Name:      "valid-security-pod-ctx",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -1234,10 +1142,8 @@ var _ = Describe("MCPServer Validation", func() {
 		It("should accept SecurityConfig with securityContext set", func() {
 			allowPrivilegeEscalation := false
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "valid-security-container-ctx",
-					Namespace: namespace.Name,
-				},
+				Name:      "valid-security-container-ctx",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -1263,10 +1169,8 @@ var _ = Describe("MCPServer Validation", func() {
 		It("should accept MCPServer without security field (omitted)", func() {
 			replicas := int32(1)
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "valid-no-security",
-					Namespace: namespace.Name,
-				},
+				Name:      "valid-no-security",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -1288,10 +1192,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should accept valid DNS subdomain ServiceAccountName", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "valid-sa-dns-subdomain",
-					Namespace: namespace.Name,
-				},
+				Name:      "valid-sa-dns-subdomain",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -1314,10 +1216,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should accept ServiceAccountName with dots", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "valid-sa-with-dots",
-					Namespace: namespace.Name,
-				},
+				Name:      "valid-sa-with-dots",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -1340,10 +1240,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should reject ServiceAccountName with uppercase letters", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "invalid-sa-uppercase",
-					Namespace: namespace.Name,
-				},
+				Name:      "invalid-sa-uppercase",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -1369,10 +1267,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should reject ServiceAccountName with invalid characters", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "invalid-sa-chars",
-					Namespace: namespace.Name,
-				},
+				Name:      "invalid-sa-chars",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -1398,10 +1294,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should reject ServiceAccountName starting with hyphen", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "invalid-sa-start-hyphen",
-					Namespace: namespace.Name,
-				},
+				Name:      "invalid-sa-start-hyphen",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -1427,10 +1321,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should reject ServiceAccountName ending with hyphen", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "invalid-sa-end-hyphen",
-					Namespace: namespace.Name,
-				},
+				Name:      "invalid-sa-end-hyphen",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -1458,10 +1350,8 @@ var _ = Describe("MCPServer Validation", func() {
 	Context("MCPServerSpec.Path validation", func() {
 		It("should accept valid HTTP path", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "valid-path",
-					Namespace: namespace.Name,
-				},
+				Name:      "valid-path",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -1480,10 +1370,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should accept path with hyphens and underscores", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "valid-path-chars",
-					Namespace: namespace.Name,
-				},
+				Name:      "valid-path-chars",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -1502,10 +1390,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should use default path /mcp when not specified", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "default-path",
-					Namespace: namespace.Name,
-				},
+				Name:      "default-path",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -1524,10 +1410,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should reject path not starting with /", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "invalid-path-no-slash",
-					Namespace: namespace.Name,
-				},
+				Name:      "invalid-path-no-slash",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -1549,10 +1433,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should reject path containing spaces", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "invalid-path-space",
-					Namespace: namespace.Name,
-				},
+				Name:      "invalid-path-space",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -1574,10 +1456,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should reject path containing query string separator", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "invalid-path-query",
-					Namespace: namespace.Name,
-				},
+				Name:      "invalid-path-query",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -1599,10 +1479,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should reject path containing fragment separator", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "invalid-path-fragment",
-					Namespace: namespace.Name,
-				},
+				Name:      "invalid-path-fragment",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -1625,10 +1503,8 @@ var _ = Describe("MCPServer Validation", func() {
 		It("should reject path that is too long", func() {
 			longPath := "/" + strings.Repeat("a", 253) // 254 chars total
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "invalid-path-toolong",
-					Namespace: namespace.Name,
-				},
+				Name:      "invalid-path-toolong",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -1653,10 +1529,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should accept valid arguments array", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "valid-arguments",
-					Namespace: namespace.Name,
-				},
+				Name:      "valid-arguments",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -1675,10 +1549,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should accept empty arguments array", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "empty-arguments",
-					Namespace: namespace.Name,
-				},
+				Name:      "empty-arguments",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
@@ -1697,10 +1569,8 @@ var _ = Describe("MCPServer Validation", func() {
 
 		It("should reject arguments array containing empty strings", func() {
 			mcpServer := &MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "invalid-empty-string-arg",
-					Namespace: namespace.Name,
-				},
+				Name:      "invalid-empty-string-arg",
+				Namespace: namespace.Name,
 				Spec: MCPServerSpec{
 					Source: Source{
 						Type: SourceTypeContainerImage,
