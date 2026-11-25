@@ -220,11 +220,14 @@ func EnsureMultiListenerGateway(ctx context.Context, t *testing.T, cfg *envconf.
 	return gatewayAddress
 }
 
-// AssertMCPReachable performs a full MCP handshake through the gateway,
-// proving the server is reachable via the data plane. It connects to the
+// AssertMCPReachable verifies MCP initialization through the gateway. A broker
+// may answer without reaching a backend. It connects to the
 // gateway's LoadBalancer address with the route hostname as the Host header.
 func AssertMCPReachable(ctx context.Context, t *testing.T, gatewayAddress, routeHostname, path string) {
 	t.Helper()
+
+	const attempts = 5
+	retryDelay := 10 * time.Second
 
 	httpClient := WithHostOverride(&http.Client{}, routeHostname)
 
@@ -236,27 +239,42 @@ func AssertMCPReachable(ctx context.Context, t *testing.T, gatewayAddress, route
 		nil,
 	)
 
-	transport := &mcp.StreamableClientTransport{
-		Endpoint:   fmt.Sprintf("http://%s%s", gatewayAddress, path),
-		HTTPClient: httpClient,
-	}
+	var lastErr error
+	for i := range attempts {
+		transport := &mcp.StreamableClientTransport{
+			Endpoint:   fmt.Sprintf("http://%s%s", gatewayAddress, path),
+			HTTPClient: httpClient,
+		}
 
-	connectCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
+		connectCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		session, err := mcpClient.Connect(connectCtx, transport, nil)
+		if err != nil {
+			cancel()
+			lastErr = err
+			t.Logf("MCP handshake attempt %d/%d failed (address=%s, host=%s, path=%s): %v",
+				i+1, attempts, gatewayAddress, routeHostname, path, err)
+			if i < attempts-1 {
+				select {
+				case <-ctx.Done():
+					t.Fatalf("context canceled during MCP handshake retry: %v", ctx.Err())
+				case <-time.After(retryDelay):
+				}
+			}
+			continue
+		}
+		cancel()
 
-	session, err := mcpClient.Connect(connectCtx, transport, nil)
-	if err != nil {
-		t.Fatalf("MCP handshake through gateway failed (address=%s, host=%s, path=%s): %v",
-			gatewayAddress, routeHostname, path, err)
+		initResult := session.InitializeResult()
+		_ = session.Close()
+		if initResult == nil {
+			t.Fatal("InitializeResult is nil")
+		}
+		t.Logf("MCP handshake succeeded: server=%s version=%s (host=%s)",
+			initResult.ServerInfo.Name, initResult.ServerInfo.Version, routeHostname)
+		return
 	}
-	defer func() { _ = session.Close() }()
-
-	initResult := session.InitializeResult()
-	if initResult == nil {
-		t.Fatal("InitializeResult is nil")
-	}
-	t.Logf("MCP handshake succeeded: server=%s version=%s (host=%s)",
-		initResult.ServerInfo.Name, initResult.ServerInfo.Version, routeHostname)
+	t.Fatalf("MCP handshake through gateway failed after %d attempts (address=%s, host=%s, path=%s): %v",
+		attempts, gatewayAddress, routeHostname, path, lastErr)
 }
 
 // EnsureReferenceGrant creates a ReferenceGrant in gatewayNamespace that allows

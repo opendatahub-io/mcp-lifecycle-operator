@@ -74,7 +74,13 @@ func SetupMCPServer(ctx context.Context, t *testing.T, cfg *envconf.Config, name
 	r := cfg.Client().Resources()
 
 	server := NewMCPServer(name, ns, opts...)
-	if err := r.Create(ctx, server); err != nil {
+	webhookRestartBackoff := retry.DefaultBackoff
+	webhookRestartBackoff.Steps = 8
+	webhookRestartBackoff.Duration = time.Second
+	webhookRestartBackoff.Factor = 1.5
+	if err := retry.OnError(webhookRestartBackoff, apierrors.IsInternalError, func() error {
+		return r.Create(ctx, server)
+	}); err != nil {
 		t.Fatalf("failed to create MCPServer: %v", err)
 	}
 	t.Logf("created MCPServer %s/%s", ns, server.Name)
