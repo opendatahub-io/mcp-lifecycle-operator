@@ -14,14 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1beta1
+package v1
 
-import (
-	ctrl "sigs.k8s.io/controller-runtime"
-)
-
-// SetupWebhookWithManager registers the conversion webhook with the manager.
-func (r *MCPServer) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr, r).
-		Complete()
-}
+// Hub marks MCPServer v1 as the storage version for conversion.
+func (*MCPServer) Hub() {}

@@ -34,7 +34,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	mcpv1beta1 "github.com/kubernetes-sigs/mcp-lifecycle-operator/api/v1beta1"
+	mcpv1 "github.com/kubernetes-sigs/mcp-lifecycle-operator/api/v1"
 )
 
 var _ = Describe("MCPServer Controller - Owned Resource Cleanup", func() {
@@ -54,7 +54,7 @@ var _ = Describe("MCPServer Controller - Owned Resource Cleanup", func() {
 		})
 
 		AfterEach(func() {
-			resource := &mcpv1beta1.MCPServer{}
+			resource := &mcpv1.MCPServer{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			if err == nil {
 				Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
@@ -83,7 +83,7 @@ var _ = Describe("MCPServer Controller - Owned Resource Cleanup", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			mcpServer := &mcpv1beta1.MCPServer{}
+			mcpServer := &mcpv1.MCPServer{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 
 			deployment := &appsv1.Deployment{}
@@ -95,7 +95,7 @@ var _ = Describe("MCPServer Controller - Owned Resource Cleanup", func() {
 			Expect(ownerRef.UID).To(Equal(mcpServer.UID))
 			Expect(*ownerRef.Controller).To(BeTrue())
 			Expect(ownerRef.Kind).To(Equal("MCPServer"))
-			Expect(ownerRef.APIVersion).To(Equal("mcp.x-k8s.io/v1beta1"))
+			Expect(ownerRef.APIVersion).To(Equal(mcpv1.GroupVersion.String()))
 		})
 
 		It("should set controller owner reference on created Service", func() {
@@ -110,7 +110,7 @@ var _ = Describe("MCPServer Controller - Owned Resource Cleanup", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			mcpServer := &mcpv1beta1.MCPServer{}
+			mcpServer := &mcpv1.MCPServer{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 
 			service := &corev1.Service{}
@@ -122,7 +122,7 @@ var _ = Describe("MCPServer Controller - Owned Resource Cleanup", func() {
 			Expect(ownerRef.UID).To(Equal(mcpServer.UID))
 			Expect(*ownerRef.Controller).To(BeTrue())
 			Expect(ownerRef.Kind).To(Equal("MCPServer"))
-			Expect(ownerRef.APIVersion).To(Equal("mcp.x-k8s.io/v1beta1"))
+			Expect(ownerRef.APIVersion).To(Equal(mcpv1.GroupVersion.String()))
 		})
 
 		It("should preserve owner references across reconciliation updates", func() {
@@ -138,7 +138,7 @@ var _ = Describe("MCPServer Controller - Owned Resource Cleanup", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			mcpServer := &mcpv1beta1.MCPServer{}
+			mcpServer := &mcpv1.MCPServer{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 			originalUID := mcpServer.UID
 
@@ -183,17 +183,15 @@ var _ = Describe("MCPServer Controller - Foreign Owned Resources", func() {
 		BeforeEach(func() {
 			By("Pre-creating a Deployment owned by a different controller")
 			foreignDeployment := &appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      resourceName,
-					Namespace: "default",
-					OwnerReferences: []metav1.OwnerReference{
-						{
-							APIVersion: "apps/v1",
-							Kind:       "SomeOtherController",
-							Name:       "foreign-owner",
-							UID:        types.UID("foreign-controller-uid"),
-							Controller: new(true),
-						},
+				Name:      resourceName,
+				Namespace: "default",
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						APIVersion: "apps/v1",
+						Kind:       "SomeOtherController",
+						Name:       "foreign-owner",
+						UID:        types.UID("foreign-controller-uid"),
+						Controller: new(true),
 					},
 				},
 				Spec: appsv1.DeploymentSpec{
@@ -220,7 +218,7 @@ var _ = Describe("MCPServer Controller - Foreign Owned Resources", func() {
 		})
 
 		AfterEach(func() {
-			resource := &mcpv1beta1.MCPServer{}
+			resource := &mcpv1.MCPServer{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			if err == nil {
 				Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
@@ -267,17 +265,15 @@ var _ = Describe("MCPServer Controller - Foreign Owned Resources", func() {
 		BeforeEach(func() {
 			By("Pre-creating a Service owned by a different controller")
 			foreignService := &corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      resourceName,
-					Namespace: "default",
-					OwnerReferences: []metav1.OwnerReference{
-						{
-							APIVersion: "apps/v1",
-							Kind:       "SomeOtherController",
-							Name:       "foreign-svc-owner",
-							UID:        types.UID("foreign-svc-controller-uid"),
-							Controller: new(true),
-						},
+				Name:      resourceName,
+				Namespace: "default",
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						APIVersion: "apps/v1",
+						Kind:       "SomeOtherController",
+						Name:       "foreign-svc-owner",
+						UID:        types.UID("foreign-svc-controller-uid"),
+						Controller: new(true),
 					},
 				},
 				Spec: corev1.ServiceSpec{
@@ -300,7 +296,7 @@ var _ = Describe("MCPServer Controller - Foreign Owned Resources", func() {
 		})
 
 		AfterEach(func() {
-			resource := &mcpv1beta1.MCPServer{}
+			resource := &mcpv1.MCPServer{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			if err == nil {
 				Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
@@ -377,7 +373,7 @@ var _ = Describe("MCPServer Controller - Foreign Owned Resources", func() {
 		})
 
 		AfterEach(func() {
-			resource := &mcpv1beta1.MCPServer{}
+			resource := &mcpv1.MCPServer{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			if err == nil {
 				Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
@@ -410,7 +406,7 @@ var _ = Describe("MCPServer Controller - Foreign Owned Resources", func() {
 			Expect(deployment.OwnerReferences).To(BeEmpty())
 
 			By("Verifying the MCPServer status shows deployment unavailable with ownership error")
-			mcpServer := &mcpv1beta1.MCPServer{}
+			mcpServer := &mcpv1.MCPServer{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 			availableCondition := meta.FindStatusCondition(mcpServer.Status.Conditions, "Available")
 			Expect(availableCondition).NotTo(BeNil())
@@ -455,7 +451,7 @@ var _ = Describe("MCPServer Controller - Foreign Owned Resources", func() {
 		})
 
 		AfterEach(func() {
-			resource := &mcpv1beta1.MCPServer{}
+			resource := &mcpv1.MCPServer{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			if err == nil {
 				Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
@@ -485,7 +481,7 @@ var _ = Describe("MCPServer Controller - Foreign Owned Resources", func() {
 			Expect(service.Spec.Ports[0].Port).To(Equal(int32(9999)))
 
 			By("Verifying the MCPServer status shows service unavailable with ownership error")
-			mcpServer := &mcpv1beta1.MCPServer{}
+			mcpServer := &mcpv1.MCPServer{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 			availableCondition := meta.FindStatusCondition(mcpServer.Status.Conditions, "Available")
 			Expect(availableCondition).NotTo(BeNil())
@@ -510,24 +506,22 @@ var _ = Describe("MCPServer Controller - Foreign Owned Resources", func() {
 
 			By("Pre-creating a Deployment with multiple non-controller owners")
 			multiOwnerDeployment := &appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      resourceName,
-					Namespace: "default",
-					OwnerReferences: []metav1.OwnerReference{
-						{
-							APIVersion: "mcp.x-k8s.io/v1beta1",
-							Kind:       "MCPServer",
-							Name:       "some-other-server",
-							UID:        types.UID("other-mcpserver-uid"),
-							Controller: new(false), // Not a controller
-						},
-						{
-							APIVersion: "apps/v1",
-							Kind:       "ReplicaSet",
-							Name:       "some-replicaset",
-							UID:        types.UID("replicaset-uid"),
-							Controller: new(false), // Also not a controller
-						},
+				Name:      resourceName,
+				Namespace: "default",
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						APIVersion: "mcp.x-k8s.io/v1beta1",
+						Kind:       "MCPServer",
+						Name:       "some-other-server",
+						UID:        types.UID("other-mcpserver-uid"),
+						Controller: new(false), // Not a controller
+					},
+					{
+						APIVersion: "apps/v1",
+						Kind:       "ReplicaSet",
+						Name:       "some-replicaset",
+						UID:        types.UID("replicaset-uid"),
+						Controller: new(false), // Also not a controller
 					},
 				},
 				Spec: appsv1.DeploymentSpec{
@@ -553,7 +547,7 @@ var _ = Describe("MCPServer Controller - Foreign Owned Resources", func() {
 		})
 
 		AfterEach(func() {
-			resource := &mcpv1beta1.MCPServer{}
+			resource := &mcpv1.MCPServer{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			if err == nil {
 				Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
@@ -590,7 +584,7 @@ var _ = Describe("MCPServer Controller - Foreign Owned Resources", func() {
 			Expect(*deployment.OwnerReferences[1].Controller).To(BeFalse())
 
 			By("Verifying the MCPServer status shows deployment unavailable with ownership error")
-			mcpServer := &mcpv1beta1.MCPServer{}
+			mcpServer := &mcpv1.MCPServer{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 			availableCondition := meta.FindStatusCondition(mcpServer.Status.Conditions, "Available")
 			Expect(availableCondition).NotTo(BeNil())
@@ -615,24 +609,22 @@ var _ = Describe("MCPServer Controller - Foreign Owned Resources", func() {
 
 			By("Pre-creating a Service with multiple non-controller owners")
 			multiOwnerService := &corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      resourceName,
-					Namespace: "default",
-					OwnerReferences: []metav1.OwnerReference{
-						{
-							APIVersion: "mcp.x-k8s.io/v1beta1",
-							Kind:       "MCPServer",
-							Name:       "some-other-server",
-							UID:        types.UID("other-mcpserver-uid"),
-							Controller: new(false), // Not a controller
-						},
-						{
-							APIVersion: "v1",
-							Kind:       "ConfigMap",
-							Name:       "some-config",
-							UID:        types.UID("config-uid"),
-							Controller: new(false), // Also not a controller
-						},
+				Name:      resourceName,
+				Namespace: "default",
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						APIVersion: "mcp.x-k8s.io/v1beta1",
+						Kind:       "MCPServer",
+						Name:       "some-other-server",
+						UID:        types.UID("other-mcpserver-uid"),
+						Controller: new(false), // Not a controller
+					},
+					{
+						APIVersion: "v1",
+						Kind:       "ConfigMap",
+						Name:       "some-config",
+						UID:        types.UID("config-uid"),
+						Controller: new(false), // Also not a controller
 					},
 				},
 				Spec: corev1.ServiceSpec{
@@ -650,7 +642,7 @@ var _ = Describe("MCPServer Controller - Foreign Owned Resources", func() {
 		})
 
 		AfterEach(func() {
-			resource := &mcpv1beta1.MCPServer{}
+			resource := &mcpv1.MCPServer{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			if err == nil {
 				Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
@@ -687,7 +679,7 @@ var _ = Describe("MCPServer Controller - Foreign Owned Resources", func() {
 			Expect(*service.OwnerReferences[1].Controller).To(BeFalse())
 
 			By("Verifying the MCPServer status shows service unavailable with ownership error")
-			mcpServer := &mcpv1beta1.MCPServer{}
+			mcpServer := &mcpv1.MCPServer{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 			availableCondition := meta.FindStatusCondition(mcpServer.Status.Conditions, "Available")
 			Expect(availableCondition).NotTo(BeNil())
@@ -707,19 +699,17 @@ var _ = Describe("MCPServer Controller - Foreign Owned Resources", func() {
 
 		It("should adopt deployment when MCPServer is recreated with same name", func() {
 			By("Creating first MCPServer")
-			oldMCPServer := &mcpv1beta1.MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      resourceName,
-					Namespace: "default",
-				},
-				Spec: mcpv1beta1.MCPServerSpec{
-					Source: mcpv1beta1.Source{
-						Type: mcpv1beta1.SourceTypeContainerImage,
-						ContainerImage: &mcpv1beta1.ContainerImageSource{
+			oldMCPServer := &mcpv1.MCPServer{
+				Name:      resourceName,
+				Namespace: "default",
+				Spec: mcpv1.MCPServerSpec{
+					Source: mcpv1.Source{
+						Type: mcpv1.SourceTypeContainerImage,
+						ContainerImage: &mcpv1.ContainerImageSource{
 							Ref: "docker.io/library/old-image:latest",
 						},
 					},
-					Config: mcpv1beta1.ServerConfig{
+					Config: mcpv1.ServerConfig{
 						Port: 8080,
 					},
 				},
@@ -758,19 +748,17 @@ var _ = Describe("MCPServer Controller - Foreign Owned Resources", func() {
 			Expect(k8sClient.Update(ctx, deployment)).To(Succeed())
 
 			By("Creating new MCPServer with same name")
-			newMCPServer := &mcpv1beta1.MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      resourceName,
-					Namespace: "default",
-				},
-				Spec: mcpv1beta1.MCPServerSpec{
-					Source: mcpv1beta1.Source{
-						Type: mcpv1beta1.SourceTypeContainerImage,
-						ContainerImage: &mcpv1beta1.ContainerImageSource{
+			newMCPServer := &mcpv1.MCPServer{
+				Name:      resourceName,
+				Namespace: "default",
+				Spec: mcpv1.MCPServerSpec{
+					Source: mcpv1.Source{
+						Type: mcpv1.SourceTypeContainerImage,
+						ContainerImage: &mcpv1.ContainerImageSource{
 							Ref: "docker.io/library/new-image:latest",
 						},
 					},
-					Config: mcpv1beta1.ServerConfig{
+					Config: mcpv1.ServerConfig{
 						Port: 8080,
 					},
 				},
@@ -794,7 +782,7 @@ var _ = Describe("MCPServer Controller - Foreign Owned Resources", func() {
 			Expect(deployment.Spec.Template.Spec.Containers[0].Image).To(Equal("docker.io/library/new-image:latest"))
 
 			By("Verifying MCPServer status shows successful reconciliation")
-			mcpServer := &mcpv1beta1.MCPServer{}
+			mcpServer := &mcpv1.MCPServer{}
 			Eventually(func() string {
 				err := k8sClient.Get(ctx, typeNamespacedName, mcpServer)
 				if err != nil {
@@ -826,19 +814,17 @@ var _ = Describe("MCPServer Controller - Foreign Owned Resources", func() {
 
 		It("should adopt service when MCPServer is recreated with same name", func() {
 			By("Creating first MCPServer")
-			oldMCPServer := &mcpv1beta1.MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      resourceName,
-					Namespace: "default",
-				},
-				Spec: mcpv1beta1.MCPServerSpec{
-					Source: mcpv1beta1.Source{
-						Type: mcpv1beta1.SourceTypeContainerImage,
-						ContainerImage: &mcpv1beta1.ContainerImageSource{
+			oldMCPServer := &mcpv1.MCPServer{
+				Name:      resourceName,
+				Namespace: "default",
+				Spec: mcpv1.MCPServerSpec{
+					Source: mcpv1.Source{
+						Type: mcpv1.SourceTypeContainerImage,
+						ContainerImage: &mcpv1.ContainerImageSource{
 							Ref: "docker.io/library/old-image:latest",
 						},
 					},
-					Config: mcpv1beta1.ServerConfig{
+					Config: mcpv1.ServerConfig{
 						Port: 8080,
 					},
 				},
@@ -877,19 +863,17 @@ var _ = Describe("MCPServer Controller - Foreign Owned Resources", func() {
 			Expect(k8sClient.Update(ctx, service)).To(Succeed())
 
 			By("Creating new MCPServer with same name")
-			newMCPServer := &mcpv1beta1.MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      resourceName,
-					Namespace: "default",
-				},
-				Spec: mcpv1beta1.MCPServerSpec{
-					Source: mcpv1beta1.Source{
-						Type: mcpv1beta1.SourceTypeContainerImage,
-						ContainerImage: &mcpv1beta1.ContainerImageSource{
+			newMCPServer := &mcpv1.MCPServer{
+				Name:      resourceName,
+				Namespace: "default",
+				Spec: mcpv1.MCPServerSpec{
+					Source: mcpv1.Source{
+						Type: mcpv1.SourceTypeContainerImage,
+						ContainerImage: &mcpv1.ContainerImageSource{
 							Ref: "docker.io/library/new-image:latest",
 						},
 					},
-					Config: mcpv1beta1.ServerConfig{
+					Config: mcpv1.ServerConfig{
 						Port: 9090,
 					},
 				},
@@ -913,7 +897,7 @@ var _ = Describe("MCPServer Controller - Foreign Owned Resources", func() {
 			Expect(service.Spec.Ports[0].Port).To(Equal(int32(9090)))
 
 			By("Verifying MCPServer status shows successful reconciliation")
-			mcpServer := &mcpv1beta1.MCPServer{}
+			mcpServer := &mcpv1.MCPServer{}
 			Eventually(func() string {
 				err := k8sClient.Get(ctx, typeNamespacedName, mcpServer)
 				if err != nil {
@@ -1010,19 +994,17 @@ var _ = Describe("MCPServer Controller - Foreign Owned Resources", func() {
 			sameImage := "docker.io/library/same-image:v1.0"
 
 			By("Creating first MCPServer")
-			oldMCPServer := &mcpv1beta1.MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      resourceName,
-					Namespace: "default",
-				},
-				Spec: mcpv1beta1.MCPServerSpec{
-					Source: mcpv1beta1.Source{
-						Type: mcpv1beta1.SourceTypeContainerImage,
-						ContainerImage: &mcpv1beta1.ContainerImageSource{
+			oldMCPServer := &mcpv1.MCPServer{
+				Name:      resourceName,
+				Namespace: "default",
+				Spec: mcpv1.MCPServerSpec{
+					Source: mcpv1.Source{
+						Type: mcpv1.SourceTypeContainerImage,
+						ContainerImage: &mcpv1.ContainerImageSource{
 							Ref: sameImage,
 						},
 					},
-					Config: mcpv1beta1.ServerConfig{
+					Config: mcpv1.ServerConfig{
 						Port: 8080,
 					},
 				},
@@ -1058,19 +1040,17 @@ var _ = Describe("MCPServer Controller - Foreign Owned Resources", func() {
 			Expect(k8sClient.Update(ctx, deployment)).To(Succeed())
 
 			By("Creating new MCPServer with same image")
-			newMCPServer := &mcpv1beta1.MCPServer{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      resourceName,
-					Namespace: "default",
-				},
-				Spec: mcpv1beta1.MCPServerSpec{
-					Source: mcpv1beta1.Source{
-						Type: mcpv1beta1.SourceTypeContainerImage,
-						ContainerImage: &mcpv1beta1.ContainerImageSource{
+			newMCPServer := &mcpv1.MCPServer{
+				Name:      resourceName,
+				Namespace: "default",
+				Spec: mcpv1.MCPServerSpec{
+					Source: mcpv1.Source{
+						Type: mcpv1.SourceTypeContainerImage,
+						ContainerImage: &mcpv1.ContainerImageSource{
 							Ref: sameImage, // Same image as before
 						},
 					},
-					Config: mcpv1beta1.ServerConfig{
+					Config: mcpv1.ServerConfig{
 						Port: 8080,
 					},
 				},
@@ -1109,10 +1089,8 @@ var _ = Describe("MCPServer Controller - Foreign Owned Resources", func() {
 		BeforeEach(func() {
 			By("Pre-creating a Deployment with no owner")
 			unownedDeployment := &appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      resourceName,
-					Namespace: "default",
-				},
+				Name:      resourceName,
+				Namespace: "default",
 				Spec: appsv1.DeploymentSpec{
 					Selector: &metav1.LabelSelector{
 						MatchLabels: managedWorkloadSelector(resourceName),
@@ -1137,7 +1115,7 @@ var _ = Describe("MCPServer Controller - Foreign Owned Resources", func() {
 		})
 
 		AfterEach(func() {
-			resource := &mcpv1beta1.MCPServer{}
+			resource := &mcpv1.MCPServer{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			if err == nil {
 				Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
@@ -1187,10 +1165,8 @@ var _ = Describe("MCPServer Controller - Foreign Owned Resources", func() {
 		BeforeEach(func() {
 			By("Pre-creating a Service with no owner")
 			unownedService := &corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      resourceName,
-					Namespace: "default",
-				},
+				Name:      resourceName,
+				Namespace: "default",
 				Spec: corev1.ServiceSpec{
 					Selector: managedWorkloadSelector(resourceName),
 					Ports: []corev1.ServicePort{
@@ -1206,7 +1182,7 @@ var _ = Describe("MCPServer Controller - Foreign Owned Resources", func() {
 		})
 
 		AfterEach(func() {
-			resource := &mcpv1beta1.MCPServer{}
+			resource := &mcpv1.MCPServer{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			if err == nil {
 				Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
