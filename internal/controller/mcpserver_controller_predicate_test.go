@@ -25,14 +25,13 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
-	mcpv1beta1 "github.com/kubernetes-sigs/mcp-lifecycle-operator/api/v1beta1"
+	mcpv1 "github.com/kubernetes-sigs/mcp-lifecycle-operator/api/v1"
 )
 
 var _ = Describe("MCPServer Predicate Filtering", Ordered, func() {
@@ -178,11 +177,9 @@ var _ = Describe("MCPServer Predicate Filtering", Ordered, func() {
 		Expect(k8sClient.Status().Update(ctx, dep)).To(Succeed())
 
 		pod := &corev1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      mcpServer.Name + "-pod",
-				Namespace: mcpServer.Namespace,
-				Labels:    managedWorkloadSelector(mcpServer.Name),
-			},
+			Name:      mcpServer.Name + "-pod",
+			Namespace: mcpServer.Namespace,
+			Labels:    managedWorkloadSelector(mcpServer.Name),
 			Spec: corev1.PodSpec{
 				Containers: []corev1.Container{{Name: "c", Image: "ghcr.io/bad/image:v1"}},
 			},
@@ -204,7 +201,7 @@ var _ = Describe("MCPServer Predicate Filtering", Ordered, func() {
 
 		By("Expecting the specific pod failure rather than the generic Deployment message")
 		Eventually(func() string {
-			server := &mcpv1beta1.MCPServer{}
+			server := &mcpv1.MCPServer{}
 			if err := k8sClient.Get(ctx, serverKey, server); err != nil {
 				return ""
 			}

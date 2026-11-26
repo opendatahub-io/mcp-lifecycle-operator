@@ -9,11 +9,10 @@ name: API contract
 # Reusable workflows are pinned to @latest (currently v2.1.0); see
 # https://github.com/red-hat-data-services/api-contract-tests/blob/main/docs/releasing.md
 #
-# Baseline 54191cfbfd1277457d6a85aadafa5d4e8b362b13 is the merge base of
-# opendatahub-io/mcp-lifecycle-operator main and red-hat-data-services/mcp-lifecycle-operator
-# rhoai-3.6 (the commit the RHOAI 3.6 release was based on), from
-# release_baseline.py lookup --release 3.6 on 2026-11-13. Moving it forward needs an
-# owner's approval (the root OWNERS already gates every file in this repo).
+# Baseline d051e5a3 is the upstream sync commit that introduced MCPServer v1
+# (promoted from v1beta1 storage to v1 storage, v1alpha1 no longer served).
+# Previous baseline 54191cfb was the RHOAI 3.6 merge base; moved forward to
+# accommodate the upstream v1 MCPServer API promotion.
 
 on:
   pull_request:
@@ -27,7 +26,7 @@ jobs:
     uses: red-hat-data-services/api-contract-tests/.github/workflows/provider-crd-check.yml@latest
     with:
       crd-glob: config/crd/bases/*.yaml
-      baseline-refs: 54191cfbfd1277457d6a85aadafa5d4e8b362b13
+      baseline-refs: d051e5a33dbf27148ca96e1a7ab5404c3ec69973
       mode: enforce
 
   api-contract-coverage:

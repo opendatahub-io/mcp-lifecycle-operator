@@ -39,14 +39,14 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	mcpv1beta1 "github.com/kubernetes-sigs/mcp-lifecycle-operator/api/v1beta1"
+	mcpv1 "github.com/kubernetes-sigs/mcp-lifecycle-operator/api/v1"
 )
 
 // testRecorderBuffer is the capacity of fake event recorders used in controller tests.
 const testRecorderBuffer = 10000
 
 // testMCPDialerNoop succeeds without dialing; used so envtests do not run real MCP handshakes.
-func testMCPDialerNoop(_ context.Context, _ string, _ *http.Transport) (*mcpv1beta1.MCPServerInfo, error) {
+func testMCPDialerNoop(_ context.Context, _ string, _ *http.Transport) (*mcpv1.MCPServerInfo, error) {
 	return nil, nil
 }
 
@@ -94,20 +94,18 @@ func drainEvents(ch <-chan string) []string {
 // namespace "default", SourceTypeContainerImage with ref
 // "docker.io/library/test-image:latest", and port 8080.
 // Callers mutate the returned struct for scenario-specific fields.
-func newTestMCPServer(name string) *mcpv1beta1.MCPServer {
-	return &mcpv1beta1.MCPServer{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: "default",
-		},
-		Spec: mcpv1beta1.MCPServerSpec{
-			Source: mcpv1beta1.Source{
-				Type: mcpv1beta1.SourceTypeContainerImage,
-				ContainerImage: &mcpv1beta1.ContainerImageSource{
+func newTestMCPServer(name string) *mcpv1.MCPServer {
+	return &mcpv1.MCPServer{
+		Name:      name,
+		Namespace: "default",
+		Spec: mcpv1.MCPServerSpec{
+			Source: mcpv1.Source{
+				Type: mcpv1.SourceTypeContainerImage,
+				ContainerImage: &mcpv1.ContainerImageSource{
 					Ref: "docker.io/library/test-image:latest",
 				},
 			},
-			Config: mcpv1beta1.ServerConfig{
+			Config: mcpv1.ServerConfig{
 				Port: 8080,
 			},
 		},
@@ -124,7 +122,7 @@ var _ = Describe("MCPServer Controller", func() {
 			Name:      resourceName,
 			Namespace: "default", // TODO(user):Modify as needed
 		}
-		mcpserver := &mcpv1beta1.MCPServer{}
+		mcpserver := &mcpv1.MCPServer{}
 
 		BeforeEach(func() {
 			By("creating the custom resource for the Kind MCPServer")
@@ -137,7 +135,7 @@ var _ = Describe("MCPServer Controller", func() {
 
 		AfterEach(func() {
 			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-			resource := &mcpv1beta1.MCPServer{}
+			resource := &mcpv1.MCPServer{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -200,7 +198,7 @@ var _ = Describe("MCPServer Controller", func() {
 		})
 
 		AfterEach(func() {
-			resource := &mcpv1beta1.MCPServer{}
+			resource := &mcpv1.MCPServer{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
@@ -239,7 +237,7 @@ var _ = Describe("MCPServer Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Updating the MCPServer env vars")
-			mcpServer := &mcpv1beta1.MCPServer{}
+			mcpServer := &mcpv1.MCPServer{}
 			err = k8sClient.Get(ctx, typeNamespacedName, mcpServer)
 			Expect(err).NotTo(HaveOccurred())
 			mcpServer.Spec.Config.Env = []corev1.EnvVar{
@@ -279,7 +277,7 @@ var _ = Describe("MCPServer Controller", func() {
 		}
 
 		AfterEach(func() {
-			resource := &mcpv1beta1.MCPServer{}
+			resource := &mcpv1.MCPServer{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			if err == nil {
 				Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
@@ -308,7 +306,7 @@ var _ = Describe("MCPServer Controller", func() {
 			Expect(deployment.Spec.Template.Spec.Containers[0].Args).To(Equal([]string{"--verbose", "--port=8080"}))
 
 			By("Removing args from the MCPServer")
-			mcpServer := &mcpv1beta1.MCPServer{}
+			mcpServer := &mcpv1.MCPServer{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 			mcpServer.Spec.Config.Arguments = nil
 			Expect(k8sClient.Update(ctx, mcpServer)).To(Succeed())
@@ -339,7 +337,7 @@ var _ = Describe("MCPServer Controller", func() {
 		}
 
 		AfterEach(func() {
-			resource := &mcpv1beta1.MCPServer{}
+			resource := &mcpv1.MCPServer{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			if err == nil {
 				Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
@@ -348,8 +346,8 @@ var _ = Describe("MCPServer Controller", func() {
 
 		It("should update deployment when serviceAccountName is removed", func() {
 			resource := newTestMCPServer(resourceName)
-			resource.Spec.Runtime = mcpv1beta1.RuntimeConfig{
-				Security: mcpv1beta1.SecurityConfig{
+			resource.Spec.Runtime = mcpv1.RuntimeConfig{
+				Security: mcpv1.SecurityConfig{
 					ServiceAccountName: "my-sa",
 				},
 			}
@@ -372,11 +370,11 @@ var _ = Describe("MCPServer Controller", func() {
 			Expect(deployment.Spec.Template.Spec.ServiceAccountName).To(Equal("my-sa"))
 
 			By("Removing serviceAccountName from the MCPServer")
-			mcpServer := &mcpv1beta1.MCPServer{}
+			mcpServer := &mcpv1.MCPServer{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 			// Remove the entire Runtime config to avoid MinProperties validation error
 			// since RuntimeConfig only had Security set, which only had ServiceAccountName
-			mcpServer.Spec.Runtime = mcpv1beta1.RuntimeConfig{}
+			mcpServer.Spec.Runtime = mcpv1.RuntimeConfig{}
 			Expect(k8sClient.Update(ctx, mcpServer)).To(Succeed())
 
 			By("Reconciling again to pick up the removal")
@@ -406,7 +404,7 @@ var _ = Describe("MCPServer Controller", func() {
 		}
 
 		AfterEach(func() {
-			resource := &mcpv1beta1.MCPServer{}
+			resource := &mcpv1.MCPServer{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			if err == nil {
 				Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
@@ -417,8 +415,8 @@ var _ = Describe("MCPServer Controller", func() {
 			runAsUser := int64(1001)
 			runAsGroup := int64(0)
 			resource := newTestMCPServer(resourceName)
-			resource.Spec.Runtime = mcpv1beta1.RuntimeConfig{
-				Security: mcpv1beta1.SecurityConfig{
+			resource.Spec.Runtime = mcpv1.RuntimeConfig{
+				Security: mcpv1.SecurityConfig{
 					SecurityContext: &corev1.SecurityContext{
 						RunAsUser:  &runAsUser,
 						RunAsGroup: &runAsGroup,
@@ -450,8 +448,8 @@ var _ = Describe("MCPServer Controller", func() {
 			runAsUser := int64(1001)
 			fsGroup := int64(1001)
 			resource := newTestMCPServer(resourceName)
-			resource.Spec.Runtime = mcpv1beta1.RuntimeConfig{
-				Security: mcpv1beta1.SecurityConfig{
+			resource.Spec.Runtime = mcpv1.RuntimeConfig{
+				Security: mcpv1.SecurityConfig{
 					PodSecurityContext: &corev1.PodSecurityContext{
 						RunAsUser: &runAsUser,
 						FSGroup:   &fsGroup,
@@ -484,8 +482,8 @@ var _ = Describe("MCPServer Controller", func() {
 			fsGroup := int64(1001)
 			readOnly := true
 			resource := newTestMCPServer(resourceName)
-			resource.Spec.Runtime = mcpv1beta1.RuntimeConfig{
-				Security: mcpv1beta1.SecurityConfig{
+			resource.Spec.Runtime = mcpv1.RuntimeConfig{
+				Security: mcpv1.SecurityConfig{
 					PodSecurityContext: &corev1.PodSecurityContext{
 						RunAsUser: &runAsUser,
 						FSGroup:   &fsGroup,
@@ -526,7 +524,7 @@ var _ = Describe("MCPServer Controller", func() {
 
 			controllerReconciler := newReconcilerForTest(k8sClient, k8sClient.Scheme())
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: types.NamespacedName{Name: resourceName + "-none", Namespace: "default"},
+				Name: resourceName + "-none", Namespace: "default",
 			})
 			Expect(err).NotTo(HaveOccurred())
 
@@ -554,7 +552,7 @@ var _ = Describe("MCPServer Controller", func() {
 			Expect(containerSC.SeccompProfile).NotTo(BeNil())
 			Expect(containerSC.SeccompProfile.Type).To(Equal(corev1.SeccompProfileTypeRuntimeDefault))
 
-			mcpServer := &mcpv1beta1.MCPServer{}
+			mcpServer := &mcpv1.MCPServer{}
 			Expect(k8sClient.Get(ctx, client.ObjectKey{Name: resourceName + "-none", Namespace: "default"}, mcpServer)).To(Succeed())
 			Expect(k8sClient.Delete(ctx, mcpServer)).To(Succeed())
 		})
@@ -571,7 +569,7 @@ var _ = Describe("MCPServer Controller", func() {
 		}
 
 		AfterEach(func() {
-			resource := &mcpv1beta1.MCPServer{}
+			resource := &mcpv1.MCPServer{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			if err == nil {
 				Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
@@ -660,7 +658,7 @@ var _ = Describe("MCPServer Controller", func() {
 			Expect(*deployment.Spec.Replicas).To(Equal(int32(2)))
 
 			By("Updating replicas to 5")
-			mcpServer := &mcpv1beta1.MCPServer{}
+			mcpServer := &mcpv1.MCPServer{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 			mcpServer.Spec.Runtime.Replicas = new(int32(5))
 			Expect(k8sClient.Update(ctx, mcpServer)).To(Succeed())
@@ -701,7 +699,7 @@ var _ = Describe("MCPServer Controller", func() {
 			Expect(*deployment.Spec.Replicas).To(Equal(int32(3)))
 
 			By("Removing replicas from the MCPServer")
-			mcpServer := &mcpv1beta1.MCPServer{}
+			mcpServer := &mcpv1.MCPServer{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 			mcpServer.Spec.Runtime.Replicas = nil
 			Expect(k8sClient.Update(ctx, mcpServer)).To(Succeed())
@@ -762,7 +760,7 @@ var _ = Describe("MCPServer Controller", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			mcpServer := &mcpv1beta1.MCPServer{}
+			mcpServer := &mcpv1.MCPServer{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 			availableCondition := meta.FindStatusCondition(mcpServer.Status.Conditions, "Available")
 			Expect(availableCondition).NotTo(BeNil())
@@ -833,7 +831,7 @@ var _ = Describe("MCPServer Controller", func() {
 		})
 
 		AfterEach(func() {
-			resource := &mcpv1beta1.MCPServer{}
+			resource := &mcpv1.MCPServer{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -876,7 +874,7 @@ var _ = Describe("MCPServer Controller", func() {
 
 			Expect(result.RequeueAfter).To(BeZero())
 
-			mcpServer := &mcpv1beta1.MCPServer{}
+			mcpServer := &mcpv1.MCPServer{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 			availableCondition := meta.FindStatusCondition(mcpServer.Status.Conditions, "Available")
 			Expect(availableCondition).NotTo(BeNil())
@@ -942,7 +940,7 @@ var _ = Describe("MCPServer Controller", func() {
 			// Should NOT requeue when available
 			Expect(result.RequeueAfter).To(BeZero())
 
-			mcpServer := &mcpv1beta1.MCPServer{}
+			mcpServer := &mcpv1.MCPServer{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 			availableCondition := meta.FindStatusCondition(mcpServer.Status.Conditions, "Available")
 			Expect(availableCondition).NotTo(BeNil())
@@ -990,7 +988,7 @@ var _ = Describe("MCPServer Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.RequeueAfter).To(BeZero())
 
-			mcpServer := &mcpv1beta1.MCPServer{}
+			mcpServer := &mcpv1.MCPServer{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 			availableCondition := meta.FindStatusCondition(mcpServer.Status.Conditions, "Available")
 			Expect(availableCondition.Status).To(Equal(metav1.ConditionFalse))
@@ -1050,22 +1048,22 @@ var _ = Describe("MCPServer Controller", func() {
 			resource.Spec.Config.EnvFrom = []corev1.EnvFromSource{
 				{
 					SecretRef: &corev1.SecretEnvSource{
-						LocalObjectReference: corev1.LocalObjectReference{Name: "my-secret"},
+						Name: "my-secret",
 					},
 				},
 				{
 					ConfigMapRef: &corev1.ConfigMapEnvSource{
-						LocalObjectReference: corev1.LocalObjectReference{Name: "my-configmap"},
+						Name: "my-configmap",
 					},
 				},
 			}
 			// Create the referenced Secret and ConfigMap so envFrom validation passes
 			secret := &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{Name: "my-secret", Namespace: "default"},
+				Name: "my-secret", Namespace: "default",
 			}
 			Expect(k8sClient.Create(ctx, secret)).To(Succeed())
 			configMap := &corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{Name: "my-configmap", Namespace: "default"},
+				Name: "my-configmap", Namespace: "default",
 			}
 			Expect(k8sClient.Create(ctx, configMap)).To(Succeed())
 
@@ -1073,17 +1071,17 @@ var _ = Describe("MCPServer Controller", func() {
 		})
 
 		AfterEach(func() {
-			resource := &mcpv1beta1.MCPServer{}
+			resource := &mcpv1.MCPServer{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
 
 			// Clean up the referenced Secret and ConfigMap
 			Expect(k8sClient.Delete(ctx, &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{Name: "my-secret", Namespace: "default"},
+				Name: "my-secret", Namespace: "default",
 			})).To(Succeed())
 			Expect(k8sClient.Delete(ctx, &corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{Name: "my-configmap", Namespace: "default"},
+				Name: "my-configmap", Namespace: "default",
 			})).To(Succeed())
 		})
 
@@ -1115,7 +1113,7 @@ var _ = Describe("MCPServer Controller", func() {
 
 		It("should support both env and envFrom together", func() {
 			By("Updating the CR to also include env vars")
-			mcpServer := &mcpv1beta1.MCPServer{}
+			mcpServer := &mcpv1.MCPServer{}
 			err := k8sClient.Get(ctx, typeNamespacedName, mcpServer)
 			Expect(err).NotTo(HaveOccurred())
 			mcpServer.Spec.Config.Env = []corev1.EnvVar{
@@ -1159,7 +1157,7 @@ var _ = Describe("MCPServer Controller", func() {
 			resource.Spec.Config.EnvFrom = []corev1.EnvFromSource{
 				{
 					ConfigMapRef: &corev1.ConfigMapEnvSource{
-						LocalObjectReference: corev1.LocalObjectReference{Name: "nonexistent-configmap"},
+						Name: "nonexistent-configmap",
 					},
 				},
 			}
@@ -1167,7 +1165,7 @@ var _ = Describe("MCPServer Controller", func() {
 		})
 
 		AfterEach(func() {
-			resource := &mcpv1beta1.MCPServer{}
+			resource := &mcpv1.MCPServer{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			if err == nil {
 				Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
@@ -1192,7 +1190,7 @@ var _ = Describe("MCPServer Controller", func() {
 			Expect(errors.IsNotFound(err)).To(BeTrue())
 
 			// Verify MCPServer status has correct conditions
-			mcpServer := &mcpv1beta1.MCPServer{}
+			mcpServer := &mcpv1.MCPServer{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 
 			var ev string
@@ -1218,7 +1216,7 @@ var _ = Describe("MCPServer Controller", func() {
 		})
 
 		It("should skip validation when envFrom reference is optional", func() {
-			mcpServer := &mcpv1beta1.MCPServer{}
+			mcpServer := &mcpv1.MCPServer{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 			optional := true
 			mcpServer.Spec.Config.EnvFrom[0].ConfigMapRef.Optional = &optional
@@ -1252,7 +1250,7 @@ var _ = Describe("MCPServer Controller", func() {
 			resource.Spec.Config.EnvFrom = []corev1.EnvFromSource{
 				{
 					SecretRef: &corev1.SecretEnvSource{
-						LocalObjectReference: corev1.LocalObjectReference{Name: "nonexistent-secret"},
+						Name: "nonexistent-secret",
 					},
 				},
 			}
@@ -1260,7 +1258,7 @@ var _ = Describe("MCPServer Controller", func() {
 		})
 
 		AfterEach(func() {
-			resource := &mcpv1beta1.MCPServer{}
+			resource := &mcpv1.MCPServer{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			if err == nil {
 				Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
@@ -1285,7 +1283,7 @@ var _ = Describe("MCPServer Controller", func() {
 			Expect(errors.IsNotFound(err)).To(BeTrue())
 
 			// Verify MCPServer status has correct conditions
-			mcpServer := &mcpv1beta1.MCPServer{}
+			mcpServer := &mcpv1.MCPServer{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 
 			acceptedCondition := meta.FindStatusCondition(mcpServer.Status.Conditions, "Accepted")
@@ -1301,7 +1299,7 @@ var _ = Describe("MCPServer Controller", func() {
 		})
 
 		It("should skip validation when envFrom Secret reference is optional", func() {
-			mcpServer := &mcpv1beta1.MCPServer{}
+			mcpServer := &mcpv1.MCPServer{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 			optional := true
 			mcpServer.Spec.Config.EnvFrom[0].SecretRef.Optional = &optional
@@ -1331,7 +1329,7 @@ var _ = Describe("MCPServer Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// Get the initial Accepted condition timestamp
-			mcpServer := &mcpv1beta1.MCPServer{}
+			mcpServer := &mcpv1.MCPServer{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 			acceptedCondition := meta.FindStatusCondition(mcpServer.Status.Conditions, "Accepted")
 			Expect(acceptedCondition).NotTo(BeNil())
@@ -1372,8 +1370,8 @@ var _ = Describe("MCPServer Controller", func() {
 					Name: "MY_CONFIG_VAR",
 					ValueFrom: &corev1.EnvVarSource{
 						ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{Name: "nonexistent-env-configmap"},
-							Key:                  "some-key",
+							Name: "nonexistent-env-configmap",
+							Key:  "some-key",
 						},
 					},
 				},
@@ -1382,7 +1380,7 @@ var _ = Describe("MCPServer Controller", func() {
 		})
 
 		AfterEach(func() {
-			resource := &mcpv1beta1.MCPServer{}
+			resource := &mcpv1.MCPServer{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			if err == nil {
 				Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
@@ -1406,7 +1404,7 @@ var _ = Describe("MCPServer Controller", func() {
 			Expect(errors.IsNotFound(err)).To(BeTrue())
 
 			// Verify MCPServer status has correct conditions
-			mcpServer := &mcpv1beta1.MCPServer{}
+			mcpServer := &mcpv1.MCPServer{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 
 			acceptedCondition := meta.FindStatusCondition(mcpServer.Status.Conditions, "Accepted")
@@ -1423,7 +1421,7 @@ var _ = Describe("MCPServer Controller", func() {
 		})
 
 		It("should skip validation when env valueFrom ConfigMap reference is optional", func() {
-			mcpServer := &mcpv1beta1.MCPServer{}
+			mcpServer := &mcpv1.MCPServer{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 			optional := true
 			mcpServer.Spec.Config.Env[0].ValueFrom.ConfigMapKeyRef.Optional = &optional
@@ -1461,8 +1459,8 @@ var _ = Describe("MCPServer Controller", func() {
 					Name: "MY_SECRET_VAR",
 					ValueFrom: &corev1.EnvVarSource{
 						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{Name: "nonexistent-env-secret"},
-							Key:                  "some-key",
+							Name: "nonexistent-env-secret",
+							Key:  "some-key",
 						},
 					},
 				},
@@ -1471,7 +1469,7 @@ var _ = Describe("MCPServer Controller", func() {
 		})
 
 		AfterEach(func() {
-			resource := &mcpv1beta1.MCPServer{}
+			resource := &mcpv1.MCPServer{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			if err == nil {
 				Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
@@ -1495,7 +1493,7 @@ var _ = Describe("MCPServer Controller", func() {
 			Expect(errors.IsNotFound(err)).To(BeTrue())
 
 			// Verify MCPServer status has correct conditions
-			mcpServer := &mcpv1beta1.MCPServer{}
+			mcpServer := &mcpv1.MCPServer{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 
 			acceptedCondition := meta.FindStatusCondition(mcpServer.Status.Conditions, "Accepted")
@@ -1512,7 +1510,7 @@ var _ = Describe("MCPServer Controller", func() {
 		})
 
 		It("should skip validation when env valueFrom Secret reference is optional", func() {
-			mcpServer := &mcpv1beta1.MCPServer{}
+			mcpServer := &mcpv1.MCPServer{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, mcpServer)).To(Succeed())
 			optional := true
 			mcpServer.Spec.Config.Env[0].ValueFrom.SecretKeyRef.Optional = &optional

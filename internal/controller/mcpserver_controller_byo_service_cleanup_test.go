@@ -30,7 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	mcpv1beta1 "github.com/kubernetes-sigs/mcp-lifecycle-operator/api/v1beta1"
+	mcpv1 "github.com/kubernetes-sigs/mcp-lifecycle-operator/api/v1"
 )
 
 var _ = Describe("MCPServer Controller - BYO Service cleanup", func() {
@@ -44,7 +44,7 @@ var _ = Describe("MCPServer Controller - BYO Service cleanup", func() {
 
 		BeforeEach(func() {
 			ext := &corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{Name: externalName, Namespace: "default"},
+				Name: externalName, Namespace: "default",
 				Spec: corev1.ServiceSpec{
 					Ports:    []corev1.ServicePort{{Name: mcpPortName, Port: 9090, Protocol: corev1.ProtocolTCP}},
 					Selector: map[string]string{"app": "external"},
@@ -59,7 +59,7 @@ var _ = Describe("MCPServer Controller - BYO Service cleanup", func() {
 		})
 
 		AfterEach(func() {
-			cleanupObject(ctx, &mcpv1beta1.MCPServer{}, typeNamespacedName)
+			cleanupObject(ctx, &mcpv1.MCPServer{}, typeNamespacedName)
 			cleanupObject(ctx, &corev1.Service{}, types.NamespacedName{Name: externalName, Namespace: "default"})
 			cleanupObject(ctx, &corev1.Service{}, typeNamespacedName)
 		})
@@ -75,11 +75,11 @@ var _ = Describe("MCPServer Controller - BYO Service cleanup", func() {
 			owner := metav1.GetControllerOf(managed)
 			Expect(owner).NotTo(BeNil())
 
-			server := &mcpv1beta1.MCPServer{}
+			server := &mcpv1.MCPServer{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, server)).To(Succeed())
 			Expect(owner.UID).To(Equal(server.UID))
 
-			server.Spec.ServiceRef = &mcpv1beta1.ServiceReference{Name: externalName}
+			server.Spec.ServiceRef = &mcpv1.ServiceReference{Name: externalName}
 			Expect(k8sClient.Update(ctx, server)).To(Succeed())
 
 			_, err = r.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
@@ -101,7 +101,7 @@ var _ = Describe("MCPServer Controller - BYO Service cleanup", func() {
 
 		BeforeEach(func() {
 			ext := &corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{Name: externalName, Namespace: "default"},
+				Name: externalName, Namespace: "default",
 				Spec: corev1.ServiceSpec{
 					Ports:    []corev1.ServicePort{{Name: mcpPortName, Port: 9090, Protocol: corev1.ProtocolTCP}},
 					Selector: map[string]string{"app": "external"},
@@ -112,12 +112,12 @@ var _ = Describe("MCPServer Controller - BYO Service cleanup", func() {
 			server := newTestMCPServer(resourceName)
 			server.Spec.Config.Port = 8080
 			server.Spec.Config.Path = DefaultMCPPath
-			server.Spec.ServiceRef = &mcpv1beta1.ServiceReference{Name: externalName}
+			server.Spec.ServiceRef = &mcpv1.ServiceReference{Name: externalName}
 			Expect(k8sClient.Create(ctx, server)).To(Succeed())
 		})
 
 		AfterEach(func() {
-			cleanupObject(ctx, &mcpv1beta1.MCPServer{}, typeNamespacedName)
+			cleanupObject(ctx, &mcpv1.MCPServer{}, typeNamespacedName)
 			cleanupObject(ctx, &corev1.Service{}, types.NamespacedName{Name: externalName, Namespace: "default"})
 			cleanupObject(ctx, &corev1.Service{}, typeNamespacedName)
 		})
@@ -131,7 +131,7 @@ var _ = Describe("MCPServer Controller - BYO Service cleanup", func() {
 			err = k8sClient.Get(ctx, typeNamespacedName, &corev1.Service{})
 			Expect(apierrors.IsNotFound(err)).To(BeTrue(), "no managed Service while serviceRef is set")
 
-			server := &mcpv1beta1.MCPServer{}
+			server := &mcpv1.MCPServer{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, server)).To(Succeed())
 			server.Spec.ServiceRef = nil
 			Expect(k8sClient.Update(ctx, server)).To(Succeed())
@@ -160,7 +160,7 @@ var _ = Describe("MCPServer Controller - BYO Service cleanup", func() {
 		})
 
 		AfterEach(func() {
-			cleanupObject(ctx, &mcpv1beta1.MCPServer{}, typeNamespacedName)
+			cleanupObject(ctx, &mcpv1.MCPServer{}, typeNamespacedName)
 			cleanupObject(ctx, &corev1.Service{}, typeNamespacedName)
 		})
 
@@ -171,9 +171,9 @@ var _ = Describe("MCPServer Controller - BYO Service cleanup", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(k8sClient.Get(ctx, typeNamespacedName, &corev1.Service{})).To(Succeed())
 
-			server := &mcpv1beta1.MCPServer{}
+			server := &mcpv1.MCPServer{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, server)).To(Succeed())
-			server.Spec.ServiceRef = &mcpv1beta1.ServiceReference{Name: resourceName}
+			server.Spec.ServiceRef = &mcpv1.ServiceReference{Name: resourceName}
 			Expect(k8sClient.Update(ctx, server)).To(Succeed())
 
 			_, err = r.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
@@ -193,11 +193,11 @@ var _ = Describe("cleanupManagedServiceForBYO - unit tests", func() {
 	const externalName = "external-svc"
 	const ownerUID = types.UID("mcpserver-uid")
 
-	newServer := func(serviceRefName string) *mcpv1beta1.MCPServer {
-		return &mcpv1beta1.MCPServer{
-			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace, UID: ownerUID},
-			Spec: mcpv1beta1.MCPServerSpec{
-				ServiceRef: &mcpv1beta1.ServiceReference{Name: serviceRefName},
+	newServer := func(serviceRefName string) *mcpv1.MCPServer {
+		return &mcpv1.MCPServer{
+			Name: name, Namespace: namespace, UID: ownerUID,
+			Spec: mcpv1.MCPServerSpec{
+				ServiceRef: &mcpv1.ServiceReference{Name: serviceRefName},
 			},
 		}
 	}
@@ -206,17 +206,15 @@ var _ = Describe("cleanupManagedServiceForBYO - unit tests", func() {
 	// owner reference carrying the given UID, mimicking an operator-managed Service.
 	managedService := func(controllerUID types.UID) *corev1.Service {
 		return &corev1.Service{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: namespace,
-				OwnerReferences: []metav1.OwnerReference{{
-					APIVersion: mcpv1beta1.GroupVersion.String(),
-					Kind:       mcpv1beta1.MCPServerKind,
-					Name:       name,
-					UID:        controllerUID,
-					Controller: new(true),
-				}},
-			},
+			Name:      name,
+			Namespace: namespace,
+			OwnerReferences: []metav1.OwnerReference{{
+				APIVersion: mcpv1.GroupVersion.String(),
+				Kind:       mcpv1.MCPServerKind,
+				Name:       name,
+				UID:        controllerUID,
+				Controller: new(true),
+			}},
 			Spec: corev1.ServiceSpec{
 				Ports:    []corev1.ServicePort{{Name: mcpPortName, Port: 8080, Protocol: corev1.ProtocolTCP}},
 				Selector: map[string]string{"app": name},
@@ -226,7 +224,7 @@ var _ = Describe("cleanupManagedServiceForBYO - unit tests", func() {
 
 	externalService := func() *corev1.Service {
 		return &corev1.Service{
-			ObjectMeta: metav1.ObjectMeta{Name: externalName, Namespace: namespace},
+			Name: externalName, Namespace: namespace,
 			Spec: corev1.ServiceSpec{
 				Ports:    []corev1.ServicePort{{Name: mcpPortName, Port: 9090}},
 				Selector: map[string]string{"app": "external"},
@@ -267,7 +265,7 @@ var _ = Describe("cleanupManagedServiceForBYO - unit tests", func() {
 
 	It("does not delete a Service that has no controller owner", func() {
 		managed := &corev1.Service{
-			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+			Name: name, Namespace: namespace,
 			Spec: corev1.ServiceSpec{
 				Ports:    []corev1.ServicePort{{Name: mcpPortName, Port: 8080}},
 				Selector: map[string]string{"app": name},
