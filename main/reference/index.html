@@ -14,18 +14,18 @@
         <link rel="prev" href="../guides/byo/">
       
       
-        <link rel="next" href="v1alpha1/">
+        <link rel="next" href="v1beta1/">
       
       
         
       
       
       <link rel="icon" href="../images/favicon-64.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.2">
     
     
       
-        <title>MCPServer (v1beta1) - MCP Lifecycle Operator</title>
+        <title>MCPServer (v1) - MCP Lifecycle Operator</title>
       
     
     
@@ -113,7 +113,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              MCPServer (v1beta1)
+              MCPServer (v1)
             
           </span>
         </div>
@@ -687,7 +687,7 @@
   <span class="md-ellipsis">
     
   
-    MCPServer (v1beta1)
+    MCPServer (v1)
   
 
     
@@ -705,7 +705,7 @@
   <span class="md-ellipsis">
     
   
-    MCPServer (v1beta1)
+    MCPServer (v1)
   
 
     
@@ -742,15 +742,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#mcpx-k8siov1beta1" class="md-nav__link">
+  <a href="#mcpx-k8siov1" class="md-nav__link">
     <span class="md-ellipsis">
       
-        mcp.x-k8s.io/v1beta1
+        mcp.x-k8s.io/v1
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="mcp.x-k8s.io/v1beta1">
+    <nav class="md-nav" aria-label="mcp.x-k8s.io/v1">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1088,6 +1088,34 @@
   
   
     <li class="md-nav__item">
+      <a href="v1beta1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCPServer (v1beta1)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="v1alpha1/" class="md-nav__link">
         
   
@@ -1095,7 +1123,35 @@
   <span class="md-ellipsis">
     
   
-    Legacy API and Gateway Bindings (v1alpha1)
+    MCPServer (v1alpha1)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="mcpgatewaybinding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCPGatewayBinding (v1alpha1)
   
 
     
@@ -1412,15 +1468,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#mcpx-k8siov1beta1" class="md-nav__link">
+  <a href="#mcpx-k8siov1" class="md-nav__link">
     <span class="md-ellipsis">
       
-        mcp.x-k8s.io/v1beta1
+        mcp.x-k8s.io/v1
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="mcp.x-k8s.io/v1beta1">
+    <nav class="md-nav" aria-label="mcp.x-k8s.io/v1">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1770,10 +1826,10 @@
 <h1 id="api-reference">API Reference<a class="headerlink" href="#api-reference" title="Permanent link">&para;</a></h1>
 <h2 id="packages">Packages<a class="headerlink" href="#packages" title="Permanent link">&para;</a></h2>
 <ul>
-<li><a href="#mcpx-k8siov1beta1">mcp.x-k8s.io/v1beta1</a></li>
+<li><a href="#mcpx-k8siov1">mcp.x-k8s.io/v1</a></li>
 </ul>
-<h2 id="mcpx-k8siov1beta1">mcp.x-k8s.io/v1beta1<a class="headerlink" href="#mcpx-k8siov1beta1" title="Permanent link">&para;</a></h2>
-<p>Package v1beta1 contains API Schema definitions for the mcp v1beta1 API group.</p>
+<h2 id="mcpx-k8siov1">mcp.x-k8s.io/v1<a class="headerlink" href="#mcpx-k8siov1" title="Permanent link">&para;</a></h2>
+<p>Package v1 contains API Schema definitions for the mcp v1 API group.</p>
 <h3 id="resource-types">Resource Types<a class="headerlink" href="#resource-types" title="Permanent link">&para;</a></h3>
 <ul>
 <li><a href="#mcpserver">MCPServer</a></li>
@@ -1937,7 +1993,7 @@ instead reference existing resources managed outside the operator. The MCP
 server exposes tools, resources, and prompts that AI applications can use via
 the Model Context Protocol.</p>
 <p>Example:</p>
-<div class="language-text highlight"><pre><span></span><code>apiVersion: mcp.x-k8s.io/v1beta1
+<div class="language-text highlight"><pre><span></span><code>apiVersion: mcp.x-k8s.io/v1
 kind: MCPServer
 metadata:
   name: example
@@ -1967,7 +2023,7 @@ Services remain under their existing management and are not adopted or deleted.<
 <tbody>
 <tr>
 <td><code>apiVersion</code> <em>string</em></td>
-<td><code>mcp.x-k8s.io/v1beta1</code></td>
+<td><code>mcp.x-k8s.io/v1</code></td>
 <td></td>
 <td></td>
 </tr>
@@ -2049,12 +2105,6 @@ during the protocol handshake (initialize or server/discover).</p>
 <tr>
 <td><code>prompts</code> <em>boolean</em></td>
 <td>Prompts indicates the server supports prompt templates.</td>
-<td></td>
-<td>Optional: {} <br /></td>
-</tr>
-<tr>
-<td><code>logging</code> <em>boolean</em></td>
-<td>Logging indicates the server supports sending log messages.<br />Deprecated: logging capability is deprecated as of MCP protocol version<br />2026-07-28 (SEP-2577) and will be removed after the 12-month deprecation<br />window. The field remains functional during the transition period.</td>
 <td></td>
 <td>Optional: {} <br /></td>
 </tr>

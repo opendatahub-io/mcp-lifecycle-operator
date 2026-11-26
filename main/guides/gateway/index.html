@@ -9,7 +9,7 @@
 <link href="../quickstart/" rel="prev"/>
 <link href="../kuadrant-architecture/" rel="next"/>
 <link href="../../images/favicon-64.png" rel="icon"/>
-<meta content="mkdocs-1.6.1, mkdocs-material-9.8.1" name="generator"/>
+<meta content="mkdocs-1.6.1, mkdocs-material-9.8.2" name="generator"/>
 <title>Gateway Integration - MCP Lifecycle Operator</title>
 <link href="../../assets/stylesheets/main.57a0d79d.min.css" rel="stylesheet"/>
 <link href="../../assets/stylesheets/palette.fb2fffe2.min.css" rel="stylesheet"/>
@@ -527,6 +527,18 @@
 <span class="md-ellipsis">
     
   
+    MCPServer (v1)
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../reference/v1beta1/">
+<span class="md-ellipsis">
+    
+  
     MCPServer (v1beta1)
   
 
@@ -539,7 +551,19 @@
 <span class="md-ellipsis">
     
   
-    Legacy API and Gateway Bindings (v1alpha1)
+    MCPServer (v1alpha1)
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../reference/mcpgatewaybinding/">
+<span class="md-ellipsis">
+    
+  
+    MCPGatewayBinding (v1alpha1)
   
 
     
@@ -888,7 +912,7 @@
 <p>This design is extensible - any provider can implement its own integration controller by watching <code>MCPGatewayBinding</code> resources filtered by <code>spec.provider</code>. The operator ships with two built-in providers: <code>httproute</code> for the <a href="https://gateway-api.sigs.k8s.io/">Kubernetes Gateway API</a> and <code>kuadrant</code> for the <a href="https://docs.kuadrant.io/latest/mcp-gateway/">Kuadrant MCP Gateway</a>.</p>
 <h2 id="mcpserver-configuration">MCPServer Configuration<a class="headerlink" href="#mcpserver-configuration" title="Permanent link">¶</a></h2>
 <p>Add <code>spec.gateway</code> to your MCPServer to enable gateway integration:</p>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a href="#__codelineno-0-1" id="__codelineno-0-1" name="__codelineno-0-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mcp.x-k8s.io/v1beta1</span>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a href="#__codelineno-0-1" id="__codelineno-0-1" name="__codelineno-0-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mcp.x-k8s.io/v1</span>
 </span><span id="__span-0-2"><a href="#__codelineno-0-2" id="__codelineno-0-2" name="__codelineno-0-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">MCPServer</span>
 </span><span id="__span-0-3"><a href="#__codelineno-0-3" id="__codelineno-0-3" name="__codelineno-0-3"></a><span class="nt">metadata</span><span class="p">:</span>
 </span><span id="__span-0-4"><a href="#__codelineno-0-4" id="__codelineno-0-4" name="__codelineno-0-4"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-mcp-server</span>
@@ -1154,7 +1178,7 @@
 </ol>
 <p>Both resources are owned by the MCPGatewayBinding, so they are automatically deleted when the binding is removed.</p>
 <h3 id="mcpserver-configuration_1">MCPServer Configuration<a class="headerlink" href="#mcpserver-configuration_1" title="Permanent link">¶</a></h3>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-8-1"><a href="#__codelineno-8-1" id="__codelineno-8-1" name="__codelineno-8-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mcp.x-k8s.io/v1beta1</span>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-8-1"><a href="#__codelineno-8-1" id="__codelineno-8-1" name="__codelineno-8-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mcp.x-k8s.io/v1</span>
 </span><span id="__span-8-2"><a href="#__codelineno-8-2" id="__codelineno-8-2" name="__codelineno-8-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">MCPServer</span>
 </span><span id="__span-8-3"><a href="#__codelineno-8-3" id="__codelineno-8-3" name="__codelineno-8-3"></a><span class="nt">metadata</span><span class="p">:</span>
 </span><span id="__span-8-4"><a href="#__codelineno-8-4" id="__codelineno-8-4" name="__codelineno-8-4"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-mcp-server</span>

@@ -19,7 +19,7 @@
       
       
       <link rel="icon" href="images/favicon-64.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.2">
     
     
       
@@ -786,6 +786,34 @@
   <span class="md-ellipsis">
     
   
+    MCPServer (v1)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/v1beta1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
     MCPServer (v1beta1)
   
 
@@ -814,7 +842,35 @@
   <span class="md-ellipsis">
     
   
-    Legacy API and Gateway Bindings (v1alpha1)
+    MCPServer (v1alpha1)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="reference/mcpgatewaybinding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCPGatewayBinding (v1alpha1)
   
 
     
@@ -1212,10 +1268,8 @@
 
 <h1 id="mcp-lifecycle-operator">MCP Lifecycle Operator<a class="headerlink" href="#mcp-lifecycle-operator" title="Permanent link">&para;</a></h1>
 <p>A Kubernetes operator that provides a declarative API to deploy, manage, and safely roll out <a href="https://modelcontextprotocol.io/">Model Context Protocol (MCP)</a> servers on Kubernetes, handling their full lifecycle with production-grade automation and ecosystem integrations.</p>
-<div class="admonition warning">
-<p class="admonition-title">Beta</p>
-<p>This project is currently in <strong>beta</strong> (<code>v1beta1</code>). APIs and behavior may change in future releases.</p>
-</div>
+<p><code>MCPServer</code> has a GA <code>mcp.x-k8s.io/v1</code> API. Existing <code>v1beta1</code> and <code>v1alpha1</code> clients remain supported while those versions are served. <code>MCPGatewayBinding</code> remains <code>v1alpha1</code>.</p>
+<p>For older clients, see the <a href="reference/v1beta1/">v1beta1 MCPServer reference</a> and <a href="reference/v1alpha1/">v1alpha1 MCPServer reference</a>. See the <a href="reference/mcpgatewaybinding/">MCPGatewayBinding reference</a> for the alpha gateway binding. Before retiring an older served version, follow the <a href="operating/storage-version-migration/">storage migration guide</a>.</p>
 <h2 id="core-capabilities">Core Capabilities<a class="headerlink" href="#core-capabilities" title="Permanent link">&para;</a></h2>
 <p><strong>Declarative Deployment</strong> - Define MCP servers using Kubernetes Custom Resources with automatic deployment, service creation, network policy enforcement, and lifecycle management.</p>
 <p><strong>Production Ready</strong> - Built-in health checks, security configurations, and robust status reporting for production environments.</p>
@@ -1223,7 +1277,7 @@
 <p><strong>Lifecycle Management</strong> - Automated rollouts, updates, and deletions with proper cleanup and resource management.</p>
 <h2 id="quick-example">Quick Example<a class="headerlink" href="#quick-example" title="Permanent link">&para;</a></h2>
 <p>Deploy an MCP server with a simple YAML manifest:</p>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mcp.x-k8s.io/v1beta1</span>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mcp.x-k8s.io/v1</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">MCPServer</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nt">metadata</span><span class="p">:</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-mcp-server</span>

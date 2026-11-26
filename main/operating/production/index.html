@@ -11,7 +11,7 @@
         <link rel="canonical" href="https://mcp-lifecycle-operator.sigs.k8s.io/main/operating/production/">
       
       
-        <link rel="prev" href="../../reference/v1alpha1/">
+        <link rel="prev" href="../../reference/mcpgatewaybinding/">
       
       
         <link rel="next" href="../metrics/">
@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="../../images/favicon-64.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.2">
     
     
       
@@ -675,6 +675,34 @@
   <span class="md-ellipsis">
     
   
+    MCPServer (v1)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/v1beta1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
     MCPServer (v1beta1)
   
 
@@ -703,7 +731,35 @@
   <span class="md-ellipsis">
     
   
-    Legacy API and Gateway Bindings (v1alpha1)
+    MCPServer (v1alpha1)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/mcpgatewaybinding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCPGatewayBinding (v1alpha1)
   
 
     
@@ -1442,7 +1498,7 @@
 <h2 id="network-isolation">Network isolation<a class="headerlink" href="#network-isolation" title="Permanent link">&para;</a></h2>
 <p>The operator creates a <code>NetworkPolicy</code> for every managed MCP server pod. Out of the box that policy allows <strong>any pod in the cluster</strong> to reach the server port and lets the server pod egress <strong>anywhere</strong>. For production, and to align with the NSA CSI MCP Security guidance on designing for boundaries, restrict both directions through <code>spec.network</code>.</p>
 <p>For an <a href="../../guides/byo/">existing workload referenced through <code>workloadRef</code></a>, the operator does not create a NetworkPolicy and <code>spec.network</code> is rejected. Manage isolation separately and permit the operator's endpoint verification traffic, along with required client and gateway traffic.</p>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mcp.x-k8s.io/v1beta1</span>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mcp.x-k8s.io/v1</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">MCPServer</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nt">metadata</span><span class="p">:</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-mcp-server</span>

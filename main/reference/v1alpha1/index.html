@@ -11,21 +11,21 @@
         <link rel="canonical" href="https://mcp-lifecycle-operator.sigs.k8s.io/main/reference/v1alpha1/">
       
       
-        <link rel="prev" href="../">
+        <link rel="prev" href="../v1beta1/">
       
       
-        <link rel="next" href="../../operating/production/">
+        <link rel="next" href="../mcpgatewaybinding/">
       
       
         
       
       
       <link rel="icon" href="../../images/favicon-64.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.2">
     
     
       
-        <title>Legacy API and Gateway Bindings (v1alpha1) - MCP Lifecycle Operator</title>
+        <title>MCPServer (v1alpha1) - MCP Lifecycle Operator</title>
       
     
     
@@ -113,7 +113,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Legacy API and Gateway Bindings (v1alpha1)
+              MCPServer (v1alpha1)
             
           </span>
         </div>
@@ -678,6 +678,34 @@
   <span class="md-ellipsis">
     
   
+    MCPServer (v1)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../v1beta1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
     MCPServer (v1beta1)
   
 
@@ -715,7 +743,7 @@
   <span class="md-ellipsis">
     
   
-    Legacy API and Gateway Bindings (v1alpha1)
+    MCPServer (v1alpha1)
   
 
     
@@ -733,7 +761,7 @@
   <span class="md-ellipsis">
     
   
-    Legacy API and Gateway Bindings (v1alpha1)
+    MCPServer (v1alpha1)
   
 
     
@@ -820,39 +848,6 @@
     <span class="md-ellipsis">
       
         MCPConfig
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#mcpgatewaybinding" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        MCPGatewayBinding
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#mcpgatewaybindingspec" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        MCPGatewayBindingSpec
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#mcpgatewaybindingstatus" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        MCPGatewayBindingStatus
       
     </span>
   </a>
@@ -1082,6 +1077,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mcpgatewaybinding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCPGatewayBinding (v1alpha1)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1447,39 +1470,6 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#mcpgatewaybinding" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        MCPGatewayBinding
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#mcpgatewaybindingspec" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        MCPGatewayBindingSpec
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#mcpgatewaybindingstatus" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        MCPGatewayBindingStatus
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#mcpserver" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1732,7 +1722,6 @@
 <p>Package v1alpha1 contains API Schema definitions for the mcp v1alpha1 API group.</p>
 <h3 id="resource-types">Resource Types<a class="headerlink" href="#resource-types" title="Permanent link">&para;</a></h3>
 <ul>
-<li><a href="#mcpgatewaybinding">MCPGatewayBinding</a></li>
 <li><a href="#mcpserver">MCPServer</a></li>
 </ul>
 <h4 id="containerimagesource">ContainerImageSource<a class="headerlink" href="#containerimagesource" title="Permanent link">&para;</a></h4>
@@ -1824,116 +1813,6 @@ it maintains session state. These properties are distinct from container configu
 <tr>
 <td><code>stateless</code> <em>boolean</em></td>
 <td>Stateless indicates whether the MCP server is stateless (does not maintain session state).<br />Only set this to true if the MCP server you are deploying declares that it is stateless.<br />When true, the generated Service uses SessionAffinity "None", allowing<br />requests to be freely load-balanced across replicas.<br />When false or unset, the Service uses SessionAffinity "ClientIP" so that<br />a given client's requests are routed to the same pod.<br />Defaults to false (stateful).</td>
-<td></td>
-<td>Optional: {} <br /></td>
-</tr>
-</tbody>
-</table>
-<h4 id="mcpgatewaybinding">MCPGatewayBinding<a class="headerlink" href="#mcpgatewaybinding" title="Permanent link">&para;</a></h4>
-<p>MCPGatewayBinding binds an MCPServer to a gateway integration provider.
-The MCP Lifecycle Operator creates this resource when an MCPServer has
-spec.gateway configured. Integration controllers watch MCPGatewayBinding
-resources filtered by spec.provider and create provider-specific gateway
-resources (e.g., HTTPRoute for the "httproute" provider).</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-<th>Default</th>
-<th>Validation</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>apiVersion</code> <em>string</em></td>
-<td><code>mcp.x-k8s.io/v1alpha1</code></td>
-<td></td>
-<td></td>
-</tr>
-<tr>
-<td><code>kind</code> <em>string</em></td>
-<td><code>MCPGatewayBinding</code></td>
-<td></td>
-<td></td>
-</tr>
-<tr>
-<td><code>metadata</code> <em><a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#objectmeta-v1-meta">ObjectMeta</a></em></td>
-<td>Refer to Kubernetes API documentation for fields of <code>metadata</code>.</td>
-<td></td>
-<td>Optional: {} <br /></td>
-</tr>
-<tr>
-<td><code>spec</code> <em><a href="#mcpgatewaybindingspec">MCPGatewayBindingSpec</a></em></td>
-<td></td>
-<td></td>
-<td>Required: {} <br /></td>
-</tr>
-<tr>
-<td><code>status</code> <em><a href="#mcpgatewaybindingstatus">MCPGatewayBindingStatus</a></em></td>
-<td></td>
-<td></td>
-<td>Optional: {} <br /></td>
-</tr>
-</tbody>
-</table>
-<h4 id="mcpgatewaybindingspec">MCPGatewayBindingSpec<a class="headerlink" href="#mcpgatewaybindingspec" title="Permanent link">&para;</a></h4>
-<p>MCPGatewayBindingSpec defines the desired state of MCPGatewayBinding.</p>
-<p><em>Appears in:</em>
-- <a href="#mcpgatewaybinding">MCPGatewayBinding</a></p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-<th>Default</th>
-<th>Validation</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>mcpServerRef</code> <em>string</em></td>
-<td>MCPServerRef is the name of the MCPServer resource in the same namespace<br />that this binding is for.</td>
-<td></td>
-<td>MinLength: 1 <br />Required: {} <br /></td>
-</tr>
-<tr>
-<td><code>provider</code> <em>string</em></td>
-<td>Provider identifies which integration controller should handle this binding.<br />Integration controllers filter on this field to only process bindings they own.<br />Example: "httproute" for the reference Gateway API HTTPRoute controller.</td>
-<td></td>
-<td>MaxLength: 253 <br />MinLength: 1 <br />Required: {} <br /></td>
-</tr>
-<tr>
-<td><code>configRef</code> <em>string</em></td>
-<td>ConfigRef is the name of a ConfigMap in the same namespace containing<br />provider-specific configuration.</td>
-<td></td>
-<td>MaxLength: 253 <br />Optional: {} <br /></td>
-</tr>
-</tbody>
-</table>
-<h4 id="mcpgatewaybindingstatus">MCPGatewayBindingStatus<a class="headerlink" href="#mcpgatewaybindingstatus" title="Permanent link">&para;</a></h4>
-<p>MCPGatewayBindingStatus defines the observed state of MCPGatewayBinding.</p>
-<p><em>Appears in:</em>
-- <a href="#mcpgatewaybinding">MCPGatewayBinding</a></p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-<th>Default</th>
-<th>Validation</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>url</code> <em>string</em></td>
-<td>URL is the gateway endpoint URL, set by the integration controller.<br />The MCPServer reconciler reflects this into MCPServer status.</td>
-<td></td>
-<td>Optional: {} <br /></td>
-</tr>
-<tr>
-<td><code>conditions</code> <em><a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.28/#condition-v1-meta">Condition</a> array</em></td>
-<td>Conditions represent the latest available observations of the binding's state.<br />Standard condition types:<br />- "Registered": The integration controller has processed this binding<br />  and created the necessary gateway resources.</td>
 <td></td>
 <td>Optional: {} <br /></td>
 </tr>

@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="../../images/favicon-64.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.2">
     
     
       
@@ -675,6 +675,34 @@
   <span class="md-ellipsis">
     
   
+    MCPServer (v1)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/v1beta1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
     MCPServer (v1beta1)
   
 
@@ -703,7 +731,35 @@
   <span class="md-ellipsis">
     
   
-    Legacy API and Gateway Bindings (v1alpha1)
+    MCPServer (v1alpha1)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/mcpgatewaybinding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCPGatewayBinding (v1alpha1)
   
 
     
@@ -974,10 +1030,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#removing-v1alpha1" class="md-nav__link">
+  <a href="#pruning-old-stored-versions" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Removing v1alpha1
+        Pruning old stored versions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#retiring-older-served-versions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Retiring older served versions
       
     </span>
   </a>
@@ -1158,10 +1225,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#removing-v1alpha1" class="md-nav__link">
+  <a href="#pruning-old-stored-versions" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Removing v1alpha1
+        Pruning old stored versions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#retiring-older-served-versions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Retiring older served versions
       
     </span>
   </a>
@@ -1194,28 +1272,40 @@
 
 
 <h1 id="storage-version-migration">Storage Version Migration<a class="headerlink" href="#storage-version-migration" title="Permanent link">&para;</a></h1>
-<p>The <code>MCPServer</code> CRD serves both <code>v1alpha1</code> and <code>v1beta1</code>, with <strong><code>v1beta1</code> as the
-storage version</strong>. The conversion webhook converts objects on read, so every
-<code>MCPServer</code> is always readable as <code>v1beta1</code> today.</p>
-<p>However, objects written to etcd <em>before</em> <code>v1beta1</code> became the storage version are
-still physically stored as <code>v1alpha1</code> bytes. They are only rewritten when something
-updates them. Until every stored object is at <code>v1beta1</code>:</p>
-<ul>
-<li>the CRD's <code>status.storedVersions</code> keeps listing <code>v1alpha1</code>, and</li>
-<li><code>v1alpha1</code> <strong>cannot be safely removed</strong> as a served version - the API server
-  could no longer decode the stale records.</li>
-</ul>
+<p>MCPServer manifests and clients using <code>mcp.x-k8s.io/v1alpha1</code> must switch to
+<code>v1beta1</code> or <code>v1</code>. Alpha requests are no longer accepted. This does not affect
+the separate <code>v1alpha1</code> MCPGatewayBinding API. Storage migration does not update
+client manifests. Deploy the v1 admission webhook before disabling alpha serving.</p>
+<p>The <code>MCPServer</code> CRD serves <code>v1beta1</code> and <code>v1</code>, with <strong><code>v1</code> as the
+storage version</strong>. The conversion webhook makes objects readable through each
+served version, but reading an object does not rewrite its bytes in etcd. Objects
+written before the promotion may still be stored as <code>v1alpha1</code> or <code>v1beta1</code>.
+The CRD's <code>status.storedVersions</code> records versions that may still exist in
+storage. Do not remove an older version from the CRD while objects may still be
+stored in that version.</p>
 <p>Storage version migration force-rewrites all stored <code>MCPServer</code> objects at the
 current storage version.</p>
+<p>Existing <code>v1alpha1</code> MCPServers do not need a separate migration to <code>v1beta1</code>
+first: conversion uses <code>v1alpha1</code> → <code>v1beta1</code> → <code>v1</code> while the migrator rewrites
+them. The <code>v1alpha1</code> endpoint is no longer served. Clients must use <code>v1beta1</code> or
+<code>v1</code> to access these objects; alpha conversion support remains available for
+objects still stored in that version. Deprecated
+status data omitted from <code>v1</code>, including <code>status.handshakeRetryCount</code> and
+<code>status.serverInfo.capabilities.logging</code>, is lost during the rewrite.</p>
 <h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
 <p>A storage-version-migrator controller must be running in the cluster, and its
-<code>migration.k8s.io/v1alpha1</code> API must be registered. OpenShift ships this as the
-<code>openshift-kube-storage-version-migrator</code> operator. On a cluster where that API
-is not installed, <code>kubectl apply</code> fails with <code>no matches for kind
-"StorageVersionMigration"</code> - install a storage-version-migrator first.</p>
+<code>migration.k8s.io/v1alpha1</code> API must be registered to use the bundled manifest
+or <code>make migrate-storage</code>. OpenShift ships this as the
+<code>openshift-kube-storage-version-migrator</code> operator. On clusters with the native
+<code>storagemigration.k8s.io/v1</code> API instead, use the alternative below. See the
+<a href="https://kubernetes.io/docs/tasks/manage-kubernetes-objects/storage-version-migration/">Kubernetes storage migration guide</a>
+for native API availability.</p>
+<p>Install the operator release that marks <code>v1</code> as the CRD storage version before
+starting. Check <code>spec.versions</code> on the live <code>mcpservers.mcp.x-k8s.io</code> CRD;
+<code>v1</code> must have <code>storage: true</code>.</p>
 <p>The operator's <strong>conversion webhook must stay available for the entire run</strong>. The
-migrator reads each stored object (still <code>v1alpha1</code> bytes), and the API server
-routes it through the conversion webhook to re-encode it as <code>v1beta1</code>. If the
+migrator reads each stored object (possibly <code>v1alpha1</code> or <code>v1beta1</code> bytes), and
+the API server routes it through the conversion webhook to re-encode it as <code>v1</code>. If the
 webhook is unreachable or its serving certificate is invalid while the migration
 runs, those writes fail and the migration reports <code>Failed</code>. Confirm the operator
 is healthy before starting.</p>
@@ -1230,80 +1320,101 @@ This is not fixed by delete-and-retry: either bring the stored objects into
 compliance first, or relax/grandfather the policy for the duration of the
 migration.</p>
 <h2 id="running-the-migration">Running the migration<a class="headerlink" href="#running-the-migration" title="Permanent link">&para;</a></h2>
+<p>On clusters with the <code>migration.k8s.io/v1alpha1</code> API:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>make<span class="w"> </span>migrate-storage
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1"># equivalently:</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>kubectl<span class="w"> </span>apply<span class="w"> </span>-k<span class="w"> </span>config/storage-migration
 </span></code></pre></div>
-<h2 id="verifying-completion">Verifying completion<a class="headerlink" href="#verifying-completion" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Wait for the migration to succeed:</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>storageversionmigration<span class="w"> </span>mcpservers-v1beta1<span class="w"> </span>-o<span class="w"> </span>yaml
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="c1"># Look for a status condition of type "Succeeded".</span>
+<p>If an earlier <code>v1beta1</code> migration left a <code>mcpservers-v1beta1</code> request behind, it
+is harmless and separate from the new <code>mcpservers-v1</code> request. After checking
+its result, you can remove the stale request:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>kubectl<span class="w"> </span>delete<span class="w"> </span>storageversionmigration.migration.k8s.io<span class="w"> </span>mcpservers-v1beta1<span class="w"> </span>--ignore-not-found
 </span></code></pre></div>
-<p>The migrator rewrites the stored objects but does <strong>not</strong> update the CRD's
-<code>status.storedVersions</code>. That field keeps listing <code>v1alpha1</code> until it is pruned
-explicitly - see below.</p>
+<p>On clusters with the native <code>storagemigration.k8s.io/v1</code> API, create a separate
+one-shot request. The native API identifies the resource by group and resource;
+it does not take a version in <code>spec.resource</code>:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">storagemigration.k8s.io/v1</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">StorageVersionMigration</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="nt">metadata</span><span class="p">:</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mcpservers-v1</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="nt">spec</span><span class="p">:</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">  </span><span class="nt">resource</span><span class="p">:</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">    </span><span class="nt">group</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mcp.x-k8s.io</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">    </span><span class="nt">resource</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mcpservers</span>
+</span></code></pre></div>
+<p>Apply this manifest after the <code>v1</code> CRD storage version is installed. Use the
+fully qualified API name when inspecting either migration if both APIs are
+available on the cluster.</p>
+<h2 id="verifying-completion">Verifying completion<a class="headerlink" href="#verifying-completion" title="Permanent link">&para;</a></h2>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># For the bundled migration.k8s.io request:</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>kubectl<span class="w"> </span>get<span class="w"> </span>storageversionmigration.migration.k8s.io<span class="w"> </span>mcpservers-v1<span class="w"> </span>-o<span class="w"> </span>yaml
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="c1"># For the native request:</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>kubectl<span class="w"> </span>get<span class="w"> </span>storageversionmigration.storagemigration.k8s.io<span class="w"> </span>mcpservers-v1<span class="w"> </span>-o<span class="w"> </span>yaml
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="c1"># Wait for status.conditions to report Succeeded=True.</span>
+</span></code></pre></div>
+<p>After success, inspect the CRD's <code>status.storedVersions</code>. The legacy migrator
+does <strong>not</strong> prune old entries; follow the procedure below. The native migrator
+may update this field automatically, but still verify it before retiring an old
+served version.</p>
 <h2 id="retrying-a-failed-migration">Retrying a failed migration<a class="headerlink" href="#retrying-a-failed-migration" title="Permanent link">&para;</a></h2>
 <p>A <code>StorageVersionMigration</code> is a one-shot object: the migrator processes it once
 and records the result. Re-running <code>make migrate-storage</code> (or <code>kubectl apply</code>)
 against the unchanged object is a no-op and does <strong>not</strong> re-trigger it. To retry
 after a <code>Failed</code> result, delete the object and apply it again:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>kubectl<span class="w"> </span>delete<span class="w"> </span>storageversionmigration<span class="w"> </span>mcpservers-v1beta1
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>make<span class="w"> </span>migrate-storage
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>delete<span class="w"> </span>storageversionmigration.migration.k8s.io<span class="w"> </span>mcpservers-v1
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>make<span class="w"> </span>migrate-storage
 </span></code></pre></div>
-<h2 id="removing-v1alpha1">Removing v1alpha1<a class="headerlink" href="#removing-v1alpha1" title="Permanent link">&para;</a></h2>
-<p>Dropping <code>v1alpha1</code> as a served version is <strong>gated on this migration completing</strong>
-on every cluster that ever stored <code>v1alpha1</code> objects. The steps below must run
-<strong>in this order</strong>: the API server rejects a CRD whose <code>spec.versions</code> drops a
-version still listed in <code>status.storedVersions</code> (<code>status.storedVersions[0]:
-Invalid value: "v1alpha1": missing from spec.versions</code>), so the stored version has
-to be pruned first; and the validating webhook has to be moved to <code>v1beta1</code> before
-the <code>v1alpha1</code> type is deleted, or admission validation is silently lost. Once the
-migration reports <code>Succeeded</code>:</p>
+<p>For the native API, delete its <code>storageversionmigration.storagemigration.k8s.io</code>
+object and reapply the native manifest instead.</p>
+<h2 id="pruning-old-stored-versions">Pruning old stored versions<a class="headerlink" href="#pruning-old-stored-versions" title="Permanent link">&para;</a></h2>
+<p>Once the <code>v1</code> migration reports <code>Succeeded=True</code>, check the CRD:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>crd<span class="w"> </span>mcpservers.mcp.x-k8s.io<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.status.storedVersions}'</span>
+</span></code></pre></div>
+<p>If <code>v1alpha1</code> or <code>v1beta1</code> is still listed, prune both entries only after the
+migration succeeded on that cluster:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>kubectl<span class="w"> </span>patch<span class="w"> </span>crd<span class="w"> </span>mcpservers.mcp.x-k8s.io<span class="w"> </span>--subresource<span class="o">=</span>status<span class="w"> </span>--type<span class="o">=</span>merge<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span>-p<span class="w"> </span><span class="s1">'{"status":{"storedVersions":["v1"]}}'</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>kubectl<span class="w"> </span>get<span class="w"> </span>crd<span class="w"> </span>mcpservers.mcp.x-k8s.io<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.status.storedVersions}'</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1"># Expected: ["v1"]</span>
+</span></code></pre></div>
+<p>Do not prune <code>storedVersions</code> before completion: the API server must still be
+able to decode every stored object. Pruning this status field does <strong>not</strong> stop
+serving <code>v1alpha1</code> or <code>v1beta1</code> to clients; <code>spec.versions[*].served</code> controls
+that separately.</p>
+<h2 id="retiring-older-served-versions">Retiring older served versions<a class="headerlink" href="#retiring-older-served-versions" title="Permanent link">&para;</a></h2>
+<p>Only remove an old version from <code>spec.versions</code> after migration has succeeded
+and that version is absent from <code>status.storedVersions</code> on every affected
+cluster. The CRD is generated from the API types, so make the served-version
+change in code and regenerate the manifest; a live edit will be overwritten.</p>
+<p>Before disabling <code>v1alpha1</code> MCPServer, move its validating webhook marker and
+handler to a remaining served version and verify CREATE and UPDATE admission
+still works for <code>v1</code> and <code>v1beta1</code>. This is tracked in
+<a href="https://github.com/kubernetes-sigs/mcp-lifecycle-operator/issues/556">#556</a>.</p>
+<p>The manager temporarily serves both the old alpha validation endpoint and the
+new v1 endpoint. To switch admission without sending requests to an endpoint
+that an old manager pod cannot serve:</p>
 <ol>
-<li>Prune <code>v1alpha1</code> from <code>status.storedVersions</code> (the migrator does not do this).
-   This is safe only after the migration succeeded, because no object is stored as
-   <code>v1alpha1</code> any more:</li>
+<li>Roll out the new manager image while retaining the existing validating
+   webhook configuration and keeping <code>v1alpha1</code> served.</li>
+<li>Wait until all manager pods run the new image and are ready. The manager's
+   readiness probe checks that its webhook listener is reachable.</li>
+<li>Update the validating webhook configuration to target <code>v1</code> and its validation
+   path. Verify CREATE and UPDATE admission through the remaining served versions.</li>
+<li>Disable serving <code>v1alpha1</code> only after the v1 webhook rule is active.</li>
 </ol>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kubectl<span class="w"> </span>patch<span class="w"> </span>crd<span class="w"> </span>mcpservers.mcp.x-k8s.io<span class="w"> </span>--subresource<span class="o">=</span>status<span class="w"> </span>--type<span class="o">=</span>merge<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span>-p<span class="w"> </span><span class="s1">'{"status":{"storedVersions":["v1beta1"]}}'</span>
-</span></code></pre></div>
-<ol>
-<li>
-<p><strong>Re-register the validating webhook at <code>v1beta1</code> first.</strong> The only
-   <code>+kubebuilder:webhook</code> marker lives on the MCPServer <code>v1alpha1</code> type
-   (<code>api/v1alpha1/mcpserver_webhook.go</code>), and <code>v1beta1</code>'s
-   <code>SetupWebhookWithManager</code> currently wires <strong>conversion only</strong> (no
-   <code>WithValidator</code>). If you remove the <code>v1alpha1</code> type before moving the
-   validator, <code>make manifests</code> regenerates a <code>ValidatingWebhookConfiguration</code>
-   with <strong>no <code>mcpservers</code> rule</strong> - <code>MCPServerCustomValidator</code> silently stops
-   enforcing the image allowlist, digest, and label policy, and no test turns
-   red. Move <code>MCPServerCustomValidator</code> (and its <code>+kubebuilder:webhook</code> marker)
-   to <code>v1beta1</code>, wire it via <code>WithValidator</code> in the <code>v1beta1</code>
-   <code>SetupWebhookWithManager</code>, and confirm the regenerated manifest still carries
-   the <code>mcpservers</code> validating rule before continuing.</p>
-</li>
-<li>
-<p>Drop <code>v1alpha1</code> as a served version <strong>in code</strong>, not with a live <code>kubectl edit
-   crd</code>. The CRD is generated by controller-gen from the kubebuilder markers on
-   the API types, so a hand edit to <code>spec.versions</code> is reverted on the next <code>make
-   manifests</code> or operator upgrade. Remove the <strong>MCPServer</strong> <code>v1alpha1</code> type and its
-   <code>+kubebuilder</code> markers only - do <strong>not</strong> delete the whole <code>api/v1alpha1</code>
-   package: it also holds <code>MCPGatewayBinding</code>, whose CRD still has <code>v1alpha1</code> as its
-   only served and storage version, so removing the package would break it.
-   Regenerate the manifests and ship the change so the MCPServer CRD serves
-   <code>v1beta1</code> only.</p>
-</li>
-<li>
-<p>Confirm only <code>v1beta1</code> remains served and stored:</p>
-</li>
-</ol>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>kubectl<span class="w"> </span>get<span class="w"> </span>crd<span class="w"> </span>mcpservers.mcp.x-k8s.io<span class="w"> </span><span class="se">\</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{range .spec.versions[*]}{.name}{" "}{end}{"\n"}{.status.storedVersions}'</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="c1"># Expected: v1beta1</span>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="c1">#           ["v1beta1"]</span>
-</span></code></pre></div>
-<p>Do not prune <code>storedVersions</code> before the migration has succeeded - the API server
-must still be able to decode every stored object at a version that remains.</p>
+<p>Applying the whole manifest bundle at once does not enforce this order. If the
+installation mechanism cannot stage these steps, plan a maintenance window for
+MCPServer writes: calls can be rejected while old pods receive the new path.
+This sequence addresses the admission endpoint switch; upgrades that also
+introduce v1 CRDs or change storage versions must coordinate those changes with
+conversion support separately. Storage migration alone does not switch the
+admission endpoint.</p>
+<p>The alpha validation handler can be removed in a later release once supported
+upgrade paths no longer depend on the old endpoint. This does not imply removal
+of alpha conversion support for objects still stored in that version.</p>
+<p>Keep the <code>api/v1alpha1</code> package for <code>MCPGatewayBinding</code>, which still uses it.
+Keep <code>v1beta1</code> served for its deprecation window; this migration alone is not a
+reason to disable it.</p>
 
 
 
